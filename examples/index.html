@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SenangWebs Index (SWI) - Examples</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .tagline {
+            font-size: 1.3em;
+            opacity: 0.95;
+            margin-bottom: 20px;
+        }
+        
+        .subtitle {
+            font-size: 1em;
+            opacity: 0.85;
+        }
+        
+        .examples {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .example-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .example-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .example-card h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .icon {
+            font-size: 1.2em;
+        }
+        
+        .example-card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            flex-grow: 1;
+        }
+        
+        .features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+        
+        .features li {
+            padding: 8px 0;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .features li::before {
+            content: '✓';
+            color: #27ae60;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .info-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .info-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .info-section p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+        
+        .info-section code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e74c3c;
+        }
+        
+        footer {
+            text-align: center;
+            color: white;
+            opacity: 0.9;
+            padding: 20px;
+        }
+        
+        footer a {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        .badge {
+            padding: 4px 12px;
+            background: #ffeaa7;
+            color: #d63031;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            
+            .tagline {
+                font-size: 1.1em;
+            }
+            
+            .examples {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SenangWebs Index (SWI)</h1>
+            <p class="tagline">Transform JSON data into beautiful, searchable views</p>
+            <p class="subtitle">Lightweight • Zero Dependencies • Two Initialization Methods</p>
+        </header>
+        
+        <div class="info-section">
+            <h2>What is SWI?</h2>
+            <p>
+                SenangWebs Index (SWI) is a lightweight JavaScript library that makes it incredibly easy to 
+                display JSON data in a user-friendly format with built-in search and pagination. 
+                <strong>"Senang"</strong> means <strong>"easy"</strong> in Malay, and that's exactly what this library is all about!
+            </p>
+            <p>
+                Choose between <code>declarative HTML</code> attributes for zero-JavaScript setup, or use the 
+                <code>programmatic API</code> for maximum flexibility and control.
+            </p>
+        </div>
+        
+        <div class="examples">
+            <div class="example-card">
+                <h2>
+                    Complete Demo
+                    <span class="badge">Both Methods</span>
+                </h2>
+                <p>
+                    See both initialization methods side-by-side with interactive API controls. 
+                    Perfect for understanding the differences and testing all features.
+                </p>
+                <ul class="features">
+                    <li>Side-by-side comparison</li>
+                    <li>Interactive API controls</li>
+                    <li>Real-time examples</li>
+                    <li>Best for learning</li>
+                </ul>
+                <a href="demo.html" class="btn">View Complete Demo</a>
+            </div>
+            
+            <div class="example-card">
+                <h2>
+                    Declarative HTML
+                    <span class="badge">Zero JS</span>
+                </h2>
+                <p>
+                    Initialize SWI directly in your HTML using <code>data-*</code> attributes. 
+                    Perfect for quick prototypes and simple use cases where you want to get up and running fast.
+                </p>
+                <ul class="features">
+                    <li>No JavaScript required</li>
+                    <li>HTML-only configuration</li>
+                    <li>Perfect for beginners</li>
+                    <li>Quick setup</li>
+                </ul>
+                <a href="declarative.html" class="btn">View Declarative Example</a>
+            </div>
+            
+            <div class="example-card">
+                <h2>
+                    Programmatic JS
+                    <span class="badge">Full Control</span>
+                </h2>
+                <p>
+                    Use the JavaScript API for complete control over your data display. 
+                    Ideal for complex applications, dynamic content, and when you need programmatic access.
+                </p>
+                <ul class="features">
+                    <li>Full JavaScript API</li>
+                    <li>Custom templates</li>
+                    <li>Dynamic data loading</li>
+                    <li>Advanced features</li>
+                </ul>
+                <a href="programmatic.html" class="btn">View Programmatic Example</a>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>Key Features</h2>
+            <ul class="features">
+                <li>Built-in search functionality</li>
+                <li>Automatic pagination for large datasets</li>
+                <li>Customizable styling with CSS</li>
+                <li>Zero external dependencies</li>
+                <li>Works in all modern browsers</li>
+                <li>Lightweight and fast</li>
+                <li>Mobile-friendly and responsive</li>
+            </ul>
+        </div>
+        
+        <div class="info-section">
+            <h2>Quick Start</h2>
+            <p><strong>Declarative (HTML):</strong></p>
+            <p>Just add the attributes to your HTML and include the script:</p>
+            <code>&lt;div data-swi-id="myData" data-swi-source="./data.json"&gt;...&lt;/div&gt;</code>
+            
+            <p style="margin-top: 20px;"><strong>Programmatic (JavaScript):</strong></p>
+            <p>Initialize with JavaScript for full control:</p>
+            <code>new SenangWebsIndex({ container: '#app', data: './data.json', ... })</code>
+        </div>
+        
+        <footer>
+            <p>Made with love by SenangWebs</p>
+            <p>View the <a href="../README.md">documentation</a> for more information</p>
+        </footer>
+    </div>
+</body>
+</html>

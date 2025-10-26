@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SWI - Declarative Example</title>
+  <link rel="stylesheet" href="../dist/swi.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .demo-container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .swi-item {
+      border-left: 4px solid #4a90e2;
+    }
+    
+    .swi-item h3 {
+      margin: 0 0 10px 0;
+      color: #2c3e50;
+    }
+    
+    .swi-item p {
+      margin: 5px 0;
+      color: #666;
+    }
+    
+    .price {
+      font-weight: bold;
+      color: #27ae60;
+      font-size: 1.2em;
+    }
+    
+    .category {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #e8f4f8;
+      color: #2980b9;
+      border-radius: 12px;
+      font-size: 0.85em;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 SenangWebs Index - Declarative Example</h1>
+  
+  <div class="demo-container" 
+       data-swi-id="products" 
+       data-swi-source="./data.json" 
+       data-swi-page-size="5"
+       data-swi-search-key="name">
+    
+    <!-- Search Controls -->
+    <div style="margin-bottom: 20px;">
+      <input type="text" 
+             data-swi-search-input 
+             placeholder="Search products by name..." 
+             style="width: calc(100% - 120px);" />
+      <button data-swi-search-action>Search</button>
+    </div>
+    
+    <!-- Container for rendered items -->
+    <div class="swi-item-container">
+      <!-- 
+        This template is hidden and cloned for each item in the JSON data.
+      -->
+      <div data-swi-template="item" style="display: none;">
+        <h3 data-swi-value="item.name"></h3>
+        <p data-swi-value="item.description"></p>
+        <div class="price">$<span data-swi-value="item.price"></span></div>
+        <span class="category" data-swi-value="item.category"></span>
+      </div>
+    </div>
+    
+    <!-- Pagination Controls will be rendered here -->
+    <div data-swi-pagination></div>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; color: #666;">
+    <p>✨ This page uses <strong>zero custom JavaScript</strong> - everything is declarative!</p>
+    <p>The library automatically initializes from HTML attributes.</p>
+  </div>
+  
+  <script src="../dist/swi.js"></script>
+</body>
+</html>

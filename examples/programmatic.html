@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SWI - Programmatic Example</title>
+  <link rel="stylesheet" href="../dist/swi.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .demo-container {
+      background: white;
+      padding: 32px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    #data-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .swi-item {
+      display: flex;
+      gap: 20px;
+      align-items: start;
+      border-left: 4px solid #e74c3c;
+    }
+    
+    .swi-item-content {
+      flex: 1;
+    }
+    
+    .swi-item h3 {
+      margin: 0 0 10px 0;
+      color: #2c3e50;
+    }
+    
+    .swi-item p {
+      margin: 5px 0;
+      color: #666;
+      line-height: 1.5;
+    }
+    
+    .price-tag {
+      font-weight: bold;
+      color: #27ae60;
+      font-size: 1.5em;
+      white-space: nowrap;
+    }
+    
+    .category-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #ffeaa7;
+      color: #d63031;
+      border-radius: 12px;
+      font-size: 0.85em;
+      margin-top: 10px;
+      font-weight: 500;
+    }
+    
+    .stock-info {
+      font-size: 0.9em;
+      color: #7f8c8d;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚡ SenangWebs Index - Programmatic Example</h1>
+  
+  <div class="demo-container">
+    <div id="search-container"></div>
+    <div id="data-container"></div>
+    <div id="pagination-container"></div>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; color: #666;">
+    <p>💻 This page uses the <strong>JavaScript API</strong> for full control</p>
+    <p>Check the source code to see how it's initialized</p>
+  </div>
+  
+  <script src="../dist/swi.js"></script>
+  <script>
+    // Sample data - in real apps, this would come from an API
+    const products = [
+      {
+        id: 1,
+        name: "Wireless Headphones",
+        description: "Premium noise-cancelling wireless headphones with 30-hour battery life",
+        price: 199.99,
+        category: "Electronics",
+        stock: 45
+      },
+      {
+        id: 2,
+        name: "Smart Watch",
+        description: "Fitness tracking smartwatch with heart rate monitor and GPS",
+        price: 299.99,
+        category: "Electronics",
+        stock: 32
+      },
+      {
+        id: 3,
+        name: "Laptop Stand",
+        description: "Ergonomic aluminum laptop stand with adjustable height",
+        price: 49.99,
+        category: "Accessories",
+        stock: 120
+      },
+      {
+        id: 4,
+        name: "Mechanical Keyboard",
+        description: "RGB backlit mechanical keyboard with blue switches",
+        price: 129.99,
+        category: "Accessories",
+        stock: 67
+      },
+      {
+        id: 5,
+        name: "USB-C Hub",
+        description: "7-in-1 USB-C hub with HDMI, USB 3.0, and SD card reader",
+        price: 39.99,
+        category: "Accessories",
+        stock: 89
+      },
+      {
+        id: 6,
+        name: "Portable SSD",
+        description: "1TB portable SSD with USB 3.2 Gen 2 for ultra-fast transfers",
+        price: 149.99,
+        category: "Storage",
+        stock: 55
+      },
+      {
+        id: 7,
+        name: "Wireless Mouse",
+        description: "Ergonomic wireless mouse with precision tracking",
+        price: 29.99,
+        category: "Accessories",
+        stock: 150
+      },
+      {
+        id: 8,
+        name: "Webcam HD",
+        description: "1080p HD webcam with auto-focus and built-in microphone",
+        price: 79.99,
+        category: "Electronics",
+        stock: 78
+      },
+      {
+        id: 9,
+        name: "Phone Stand",
+        description: "Adjustable phone stand for desk with cable management",
+        price: 19.99,
+        category: "Accessories",
+        stock: 200
+      },
+      {
+        id: 10,
+        name: "Monitor Arm",
+        description: "Dual monitor arm mount with full motion adjustment",
+        price: 89.99,
+        category: "Accessories",
+        stock: 43
+      },
+      {
+        id: 11,
+        name: "Desk Lamp",
+        description: "LED desk lamp with wireless charging pad and USB port",
+        price: 59.99,
+        category: "Lighting",
+        stock: 91
+      },
+      {
+        id: 12,
+        name: "Cable Organizer",
+        description: "Cable management system for clean desk setup",
+        price: 24.99,
+        category: "Accessories",
+        stock: 175
+      }
+    ];
+
+    // Initialize SWI with JavaScript
+    const swi = new SenangWebsIndex({
+      container: '#data-container',
+      data: products,
+      itemTemplate: (item) => {
+        return `
+          <div class="swi-item">
+            <div class="swi-item-content">
+              <h3>${item.name}</h3>
+              <p>${item.description}</p>
+              <span class="category-badge">${item.category}</span>
+              <p class="stock-info">📦 ${item.stock} units in stock</p>
+            </div>
+            <div class="price-tag">$${item.price.toFixed(2)}</div>
+          </div>
+        `;
+      },
+      search: {
+        enabled: true,
+        selector: '#search-container',
+        searchKey: 'name'
+      },
+      pagination: {
+        enabled: true,
+        selector: '#pagination-container',
+        itemsPerPage: 5
+      }
+    });
+
+    // Add custom search input to the search container
+    const searchContainer = document.getElementById('search-container');
+    searchContainer.innerHTML = `
+      <div class="swi-search-container">
+        <input type="text" 
+               class="swi-search-input" 
+               placeholder="Search products by name..." />
+      </div>
+    `;
+
+    // Setup search functionality
+    const searchInput = searchContainer.querySelector('input');
+    searchInput.addEventListener('input', (e) => {
+      swi.search(e.target.value);
+    });
+
+    console.log('SWI Instance:', swi);
+    console.log('Try using: swi.search("keyboard") or swi.goToPage(2)');
+  </script>
+</body>
+</html>
