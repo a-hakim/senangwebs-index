@@ -1,7 +1,7 @@
 /**
  * SenangWebs Index (SWI)
  * A lightweight JavaScript library for transforming JSON data into searchable and paginated HTML views
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 class SenangWebsIndex {
@@ -90,12 +90,65 @@ class SenangWebsIndex {
   }
 
   /**
+   * Utility: Debounce function to limit execution rate
+   */
+  _debounce(func, wait = 300) {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  /**
+   * Show loading state
+   */
+  showLoading() {
+    this.container.innerHTML = `
+      <div class="swi-loading">
+        <div class="swi-spinner"></div>
+        <p>Loading data...</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Hide loading state
+   */
+  hideLoading() {
+    const loading = this.container.querySelector('.swi-loading');
+    if (loading) {
+      loading.remove();
+    }
+  }
+
+  /**
+   * Show error state
+   */
+  showError(message, details = '') {
+    this.container.innerHTML = `
+      <div class="swi-error">
+        <div class="swi-error-icon">⚠️</div>
+        <h3>${message}</h3>
+        ${details ? `<p class="swi-error-details">${details}</p>` : ''}
+        <button class="swi-error-retry" onclick="location.reload()">Retry</button>
+      </div>
+    `;
+  }
+
+  /**
    * Initialize the library
    */
   async _init() {
     try {
+      // Show loading state
+      this.showLoading();
+      
       // Load data
       await this._loadData();
+      
+      // Hide loading state
+      this.hideLoading();
       
       // Setup search if enabled
       if (this.searchConfig.enabled && this.searchConfig.selector) {
@@ -111,6 +164,7 @@ class SenangWebsIndex {
       this.render();
     } catch (error) {
       console.error('SWI: Initialization failed', error);
+      this.showError('Failed to load data', error.message);
       throw error;
     }
   }
@@ -120,15 +174,33 @@ class SenangWebsIndex {
    */
   async _loadData() {
     if (Array.isArray(this.dataSource)) {
+      // Validate array data
+      if (this.dataSource.length > 0 && typeof this.dataSource[0] !== 'object') {
+        throw new Error('SWI: Data items must be objects');
+      }
       this.data = this.dataSource;
       this.filteredData = [...this.data];
     } else if (typeof this.dataSource === 'string') {
       try {
         const response = await fetch(this.dataSource);
+        
         if (!response.ok) {
-          throw new Error(`Failed to fetch data: ${response.statusText}`);
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        this.data = await response.json();
+        
+        const data = await response.json();
+        
+        // Validate that data is an array
+        if (!Array.isArray(data)) {
+          throw new Error('Data must be an array of objects');
+        }
+        
+        // Validate data structure
+        if (data.length > 0 && typeof data[0] !== 'object') {
+          throw new Error('Data items must be objects');
+        }
+        
+        this.data = data;
         this.filteredData = [...this.data];
       } catch (error) {
         console.error('SWI: Failed to load data', error);
@@ -147,9 +219,10 @@ class SenangWebsIndex {
     this.searchConfig.inputElement = searchContainer.querySelector('input[type="text"]');
     
     if (this.searchConfig.inputElement) {
-      const searchHandler = (e) => {
+      // Use debounced search handler
+      const searchHandler = this._debounce((e) => {
         this.search(e.target.value);
-      };
+      }, 300);
       
       this.searchConfig.inputElement.addEventListener('input', searchHandler);
       this.eventListeners.push({
@@ -161,18 +234,24 @@ class SenangWebsIndex {
   }
 
   /**
-   * Perform search
+   * Perform search - supports single or multiple fields
    */
   search(query) {
-    const searchKey = this.searchConfig.searchKey;
+    // Support both string and array of search keys
+    const searchKeys = Array.isArray(this.searchConfig.searchKey) 
+      ? this.searchConfig.searchKey 
+      : [this.searchConfig.searchKey];
     
     if (!query || query.trim() === '') {
       this.filteredData = [...this.data];
     } else {
       const lowerQuery = query.toLowerCase();
       this.filteredData = this.data.filter(item => {
-        const value = item[searchKey];
-        return value && value.toString().toLowerCase().includes(lowerQuery);
+        // Search across all specified fields
+        return searchKeys.some(key => {
+          const value = item[key];
+          return value && value.toString().toLowerCase().includes(lowerQuery);
+        });
       });
     }
     
@@ -189,6 +268,28 @@ class SenangWebsIndex {
     
     // Get paginated data
     const paginatedData = this._getPaginatedData();
+    
+    // Show empty state if no data
+    if (paginatedData.length === 0) {
+      const message = this.data.length === 0 
+        ? 'No data available' 
+        : 'No results found. Try a different search term.';
+      
+      this.container.innerHTML = `
+        <div class="swi-empty-state">
+          <div class="swi-empty-icon">📭</div>
+          <h3>No Results</h3>
+          <p>${message}</p>
+        </div>
+      `;
+      
+      // Clear pagination
+      if (this.paginationConfig.enabled && this.paginationConfig.containerElement) {
+        this.paginationConfig.containerElement.innerHTML = '';
+      }
+      
+      return;
+    }
     
     // Render items
     paginatedData.forEach(item => {
@@ -505,8 +606,14 @@ class SWIDeclarativeInstance extends SenangWebsIndex {
 
   async _init() {
     try {
+      // Show loading state
+      this.showLoading();
+      
       // Load data
       await this._loadData();
+      
+      // Hide loading state
+      this.hideLoading();
       
       // Setup declarative search
       if (this.searchConfig.enabled && this.searchConfig.inputElement) {
@@ -522,6 +629,7 @@ class SWIDeclarativeInstance extends SenangWebsIndex {
       this.render();
     } catch (error) {
       console.error('SWI: Initialization failed', error);
+      this.showError('Failed to load data', error.message);
       throw error;
     }
   }
@@ -531,9 +639,10 @@ class SWIDeclarativeInstance extends SenangWebsIndex {
     const actionElement = this.searchConfig.actionElement;
     
     if (inputElement) {
-      const searchHandler = (e) => {
+      // Use debounced search handler
+      const searchHandler = this._debounce((e) => {
         this.search(e.target.value);
-      };
+      }, 300);
       
       inputElement.addEventListener('input', searchHandler);
       this.eventListeners.push({
@@ -542,7 +651,7 @@ class SWIDeclarativeInstance extends SenangWebsIndex {
         handler: searchHandler
       });
       
-      // If action element exists, trigger search on click
+      // If action element exists, trigger immediate search on click
       if (actionElement) {
         const clickHandler = (e) => {
           e.preventDefault();

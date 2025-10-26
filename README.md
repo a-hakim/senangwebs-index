@@ -5,11 +5,15 @@ A lightweight and versatile JavaScript library designed to effortlessly parse JS
 ## Features
 
 - **Two Initialization Methods**: Declarative HTML attributes or programmatic JavaScript
-- **Built-in Search**: Real-time filtering of data
+- **Built-in Search**: Real-time filtering with debouncing and multi-field support
 - **Pagination**: Automatic pagination for large datasets
+- **Loading States**: Visual feedback during data fetching
+- **Empty States**: Contextual messages when no data or results
+- **Error Handling**: User-friendly error display with details
 - **Customizable**: Easy to style and extend
 - **Zero Dependencies**: Pure JavaScript (ES6+)
 - **Universal Support**: Works in all modern browsers
+- **Performance Optimized**: Debounced search reduces unnecessary renders
 
 ## Installation
 
@@ -135,15 +139,93 @@ pagination: {
 ### Methods
 
 - `render()` - Manually trigger a re-render
-- `search(query)` - Programmatically search
+- `search(query, searchKey)` - Programmatically search (supports array of keys)
 - `goToPage(pageNumber)` - Navigate to a specific page
 - `destroy()` - Clean up and remove all event listeners
+- `showLoading()` - Display loading state
+- `hideLoading()` - Hide loading state
+- `showError(message, details)` - Display error message
 
 ## HTML Attributes Reference
 
 ### Container Attributes
 
 - `data-swi-id="unique-id"` - **Required**: Unique identifier
+- `data-swi-source="./data.json"` - **Required**: JSON data source URL
+- `data-swi-page-size="10"` - Items per page (default: 10)
+- `data-swi-search-key="name"` - Property to search (default: 'name', supports comma-separated for multi-field)
+
+### Component Attributes
+
+- `data-swi-template="item"` - Marks the template element
+- `data-swi-value="item.property"` - Binds data to element text
+- `data-swi-search-input` - Designates search input field
+- `data-swi-search-action` - Designates search button
+- `data-swi-pagination` - Designates pagination container
+
+## Advanced Features (New in v1.1.0)
+
+### Multi-field Search
+
+Search across multiple fields at once:
+
+```javascript
+// Programmatic API
+const swi = new SenangWebsIndex({
+  container: '#products',
+  data: './products.json',
+  searchKey: ['name', 'category', 'description'], // Array of fields
+  itemTemplate: (item) => `...`
+});
+
+// Search will now look in name, category, AND description
+swi.search('laptop');
+```
+
+```html
+<!-- Declarative API (comma-separated) -->
+<div
+  data-swi-id="products"
+  data-swi-source="./products.json"
+  data-swi-search-key="name,category,description"
+>
+  <!-- ... -->
+</div>
+```
+
+### Debounced Search
+
+Search is automatically debounced (300ms delay) to improve performance during typing:
+
+```javascript
+// No configuration needed - automatic!
+// Typing "laptop" will only trigger search after 300ms of inactivity
+```
+
+### Loading & Error States
+
+Loading states are handled automatically:
+
+```javascript
+// Loading is shown automatically during data fetch
+const swi = new SenangWebsIndex({
+  container: '#app',
+  data: './data.json', // Shows loading while fetching
+  itemTemplate: (item) => `...`
+});
+
+// Manual control if needed
+swi.showLoading();
+// ... do something async
+swi.hideLoading();
+
+// Display errors
+try {
+  await fetch('./data.json');
+} catch (error) {
+  swi.showError('Failed to load data', error.message);
+}
+```
 - `data-swi-source="./data.json"` - **Required**: JSON data source URL
 - `data-swi-page-size="10"` - Items per page (default: 10)
 - `data-swi-search-key="name"` - Property to search (default: 'name')

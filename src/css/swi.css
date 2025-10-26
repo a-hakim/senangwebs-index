@@ -147,21 +147,19 @@
 /* Loading State */
 .swi-loading {
   text-align: center;
-  padding: 2rem;
+  padding: 3rem 2rem;
   color: #666666;
-  font-size: 1rem;
 }
 
-.swi-loading::after {
-  content: '';
+.swi-spinner {
   display: inline-block;
-  width: 20px;
-  height: 20px;
-  margin-left: 0.5rem;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #4a90e2;
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4a90e2;
   border-radius: 50%;
   animation: swi-spin 1s linear infinite;
+  margin-bottom: 1rem;
 }
 
 @keyframes swi-spin {
@@ -169,29 +167,91 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Empty State */
-.swi-empty {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: #999999;
+.swi-loading p {
+  margin: 0;
   font-size: 1rem;
+  color: #666666;
 }
 
-.swi-empty::before {
-  content: '📭';
-  display: block;
-  font-size: 3rem;
+/* Empty State */
+.swi-empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #999999;
+}
+
+.swi-empty-icon {
+  font-size: 4rem;
   margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.swi-empty-state h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #666666;
+}
+
+.swi-empty-state p {
+  margin: 0;
+  font-size: 1rem;
+  color: #999999;
 }
 
 /* Error State */
 .swi-error {
-  padding: 1rem;
+  padding: 1.5rem;
   background-color: #fee;
   border: 1px solid #fcc;
   border-radius: 4px;
   color: #c33;
   margin: 1rem 0;
+  text-align: center;
+}
+
+.swi-error-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.swi-error h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #c33;
+}
+
+.swi-error p {
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  color: #a33;
+}
+
+.swi-error-details {
+  font-size: 0.85rem;
+  color: #c55;
+  background-color: #fff;
+  padding: 0.5rem;
+  border-radius: 3px;
+  margin-top: 0.5rem;
+  font-family: monospace;
+}
+
+.swi-error-retry {
+  padding: 0.5rem 1rem;
+  background-color: #c33;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 0.5rem;
+}
+
+.swi-error-retry:hover {
+  background-color: #a22;
 }
 
 /* Responsive Design */
