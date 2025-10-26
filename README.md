@@ -4,12 +4,12 @@ A lightweight and versatile JavaScript library designed to effortlessly parse JS
 
 ## Features
 
-- 🚀 **Two Initialization Methods**: Declarative HTML attributes or programmatic JavaScript
-- 🔍 **Built-in Search**: Real-time filtering of data
-- 📄 **Pagination**: Automatic pagination for large datasets
-- 🎨 **Customizable**: Easy to style and extend
-- 📦 **Zero Dependencies**: Pure JavaScript (ES6+)
-- 🌐 **Universal Support**: Works in all modern browsers
+- **Two Initialization Methods**: Declarative HTML attributes or programmatic JavaScript
+- **Built-in Search**: Real-time filtering of data
+- **Pagination**: Automatic pagination for large datasets
+- **Customizable**: Easy to style and extend
+- **Zero Dependencies**: Pure JavaScript (ES6+)
+- **Universal Support**: Works in all modern browsers
 
 ## Installation
 
