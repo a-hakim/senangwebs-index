@@ -13,9 +13,7 @@
     "data-grid",
     "pagination",
     "search",
-    "filter",
-    "senangwebs",
-    "swi"
+    "filter"
   ],
   "author": "SenangWebs",
   "license": "MIT",
