@@ -2,8 +2,6 @@
 
 A lightweight JavaScript library for transforming JSON data into searchable, paginated HTML views.
 
-**Version 1.1.0** | **Size: 22KB** | **Zero Dependencies**
-
 ## Features
 
 - **Dual initialization**: HTML attributes or JavaScript API
