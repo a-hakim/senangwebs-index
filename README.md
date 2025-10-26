@@ -1,30 +1,27 @@
 # SenangWebs Index (SWI)
 
-A lightweight and versatile JavaScript library designed to effortlessly parse JSON data and render it into a searchable and paginated HTML view.
+A lightweight JavaScript library for transforming JSON data into searchable, paginated HTML views.
+
+**Version 1.1.0** | **Size: 22KB** | **Zero Dependencies**
 
 ## Features
 
-- **Two Initialization Methods**: Declarative HTML attributes or programmatic JavaScript
-- **Built-in Search**: Real-time filtering with debouncing and multi-field support
-- **Pagination**: Automatic pagination for large datasets
-- **Loading States**: Visual feedback during data fetching
-- **Empty States**: Contextual messages when no data or results
-- **Error Handling**: User-friendly error display with details
-- **Customizable**: Easy to style and extend
-- **Zero Dependencies**: Pure JavaScript (ES6+)
-- **Universal Support**: Works in all modern browsers
-- **Performance Optimized**: Debounced search reduces unnecessary renders
+- **Dual initialization**: HTML attributes or JavaScript API
+- **Multi-field search**: Search across multiple properties with 300ms debouncing
+- **Smart pagination**: Automatic handling of large datasets
+- **Loading states**: Built-in loading, empty, and error states
+- **Responsive**: Mobile-friendly design
+- **Zero dependencies**: Pure ES6+ JavaScript
+- **Easy styling**: All CSS classes prefixed with `swi-`
 
 ## Installation
 
-### Via NPM
-
+**NPM:**
 ```bash
 npm install senangwebs-index
 ```
 
-### Via CDN
-
+**Direct include:**
 ```html
 <link rel="stylesheet" href="path/to/dist/swi.css" />
 <script src="path/to/dist/swi.js"></script>
@@ -32,280 +29,176 @@ npm install senangwebs-index
 
 ## Quick Start
 
-### Declarative Initialization (HTML Attributes)
-
-The simplest way to get started - no JavaScript required!
+### Declarative (HTML Only)
 
 ```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <link rel="stylesheet" href="dist/swi.css" />
-  </head>
-  <body>
-    <div
-      data-swi-id="products"
-      data-swi-source="./data.json"
-      data-swi-page-size="10"
-      data-swi-search-key="name"
-    >
-      <!-- Search -->
-      <div>
-        <input type="text" data-swi-search-input placeholder="Search..." />
-        <button data-swi-search-action>Search</button>
-      </div>
-
-      <!-- Items Container -->
-      <div class="swi-item-container">
-        <!-- Template (hidden, will be cloned for each item) -->
-        <div data-swi-template="item" style="display: none;">
-          <h3 data-swi-value="item.name"></h3>
-          <p data-swi-value="item.description"></p>
-          <span data-swi-value="item.price"></span>
-        </div>
-      </div>
-
-      <!-- Pagination -->
-      <div data-swi-pagination></div>
+<div data-swi-id="products" 
+     data-swi-source="./data.json" 
+     data-swi-page-size="10"
+     data-swi-search-key="name">
+  
+  <input type="text" data-swi-search-input placeholder="Search..." />
+  
+  <div class="swi-item-container">
+    <div data-swi-template="item" style="display: none;">
+      <h3 data-swi-value="item.name"></h3>
+      <p data-swi-value="item.description"></p>
     </div>
+  </div>
+  
+  <div data-swi-pagination></div>
+</div>
 
-    <script src="dist/swi.js"></script>
-  </body>
-</html>
+<script src="dist/swi.js"></script>
 ```
 
-### Programmatic Initialization (JavaScript)
-
-For more control and dynamic setups:
+### Programmatic (JavaScript)
 
 ```javascript
-import SenangWebsIndex from "senangwebs-index";
-
 const swi = new SenangWebsIndex({
   container: "#my-container",
-  data: "./data.json", // or an array of objects
+  data: "./data.json",
   itemTemplate: (item) => `
     <div class="swi-item">
       <h3>${item.name}</h3>
       <p>${item.description}</p>
-      <span>$${item.price}</span>
     </div>
   `,
-  search: {
-    enabled: true,
-    selector: "#search-container",
-    searchKey: "name",
-  },
-  pagination: {
-    enabled: true,
-    selector: "#pagination-container",
-    itemsPerPage: 10,
-  },
+  search: { enabled: true, searchKey: "name" },
+  pagination: { enabled: true, itemsPerPage: 10 }
 });
 ```
 
 ## API Reference
 
-### Constructor Options
+### Options
 
-| Option         | Type           | Required | Description                              |
-| -------------- | -------------- | -------- | ---------------------------------------- |
-| `container`    | String         | Yes      | CSS selector for the container element   |
-| `data`         | Array/String   | Yes      | Data array or URL to JSON file           |
-| `itemTemplate` | Function       | Yes      | Function that returns HTML for each item |
-| `search`       | Object/Boolean | No       | Search configuration                     |
-| `pagination`   | Object/Boolean | No       | Pagination configuration                 |
-
-### Search Configuration
-
-```javascript
-search: {
-  enabled: true,
-  selector: '#search-input',
-  searchKey: 'name' // Property to search in
-}
-```
-
-### Pagination Configuration
-
-```javascript
-pagination: {
-  enabled: true,
-  selector: '#pagination',
-  itemsPerPage: 10
-}
-```
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `container` | String | Yes | CSS selector for container |
+| `data` | Array/String | Yes | Data array or JSON URL |
+| `itemTemplate` | Function | Yes | Function returning HTML for each item |
+| `search` | Object | No | Search configuration |
+| `pagination` | Object | No | Pagination configuration |
 
 ### Methods
 
-- `render()` - Manually trigger a re-render
-- `search(query, searchKey)` - Programmatically search (supports array of keys)
-- `goToPage(pageNumber)` - Navigate to a specific page
-- `destroy()` - Clean up and remove all event listeners
-- `showLoading()` - Display loading state
-- `hideLoading()` - Hide loading state
-- `showError(message, details)` - Display error message
+| Method | Description |
+|--------|-------------|
+| `search(query, searchKey)` | Search data (searchKey can be string or array) |
+| `goToPage(page)` | Navigate to specific page |
+| `render()` | Re-render current data |
+| `destroy()` | Clean up event listeners |
+| `showLoading()` | Show loading spinner |
+| `hideLoading()` | Hide loading spinner |
+| `showError(msg, details)` | Display error message |
 
-## HTML Attributes Reference
+### HTML Attributes
 
-### Container Attributes
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `data-swi-id` | Yes | Unique identifier |
+| `data-swi-source` | Yes | JSON data URL |
+| `data-swi-page-size` | No | Items per page (default: 10) |
+| `data-swi-search-key` | No | Search field(s) - comma-separated for multiple |
+| `data-swi-template="item"` | Yes | Template element |
+| `data-swi-value="item.prop"` | Yes | Data binding |
+| `data-swi-search-input` | No | Search input |
+| `data-swi-pagination` | No | Pagination container |
 
-- `data-swi-id="unique-id"` - **Required**: Unique identifier
-- `data-swi-source="./data.json"` - **Required**: JSON data source URL
-- `data-swi-page-size="10"` - Items per page (default: 10)
-- `data-swi-search-key="name"` - Property to search (default: 'name', supports comma-separated for multi-field)
-
-### Component Attributes
-
-- `data-swi-template="item"` - Marks the template element
-- `data-swi-value="item.property"` - Binds data to element text
-- `data-swi-search-input` - Designates search input field
-- `data-swi-search-action` - Designates search button
-- `data-swi-pagination` - Designates pagination container
-
-## Advanced Features (New in v1.1.0)
+## Key Features
 
 ### Multi-field Search
 
-Search across multiple fields at once:
+Search across multiple properties:
 
 ```javascript
-// Programmatic API
-const swi = new SenangWebsIndex({
-  container: '#products',
-  data: './products.json',
-  searchKey: ['name', 'category', 'description'], // Array of fields
-  itemTemplate: (item) => `...`
-});
+// JavaScript API
+searchKey: ['name', 'category', 'description']
 
-// Search will now look in name, category, AND description
-swi.search('laptop');
-```
-
-```html
-<!-- Declarative API (comma-separated) -->
-<div
-  data-swi-id="products"
-  data-swi-source="./products.json"
-  data-swi-search-key="name,category,description"
->
-  <!-- ... -->
-</div>
+// HTML attribute
+data-swi-search-key="name,category,description"
 ```
 
 ### Debounced Search
 
-Search is automatically debounced (300ms delay) to improve performance during typing:
-
-```javascript
-// No configuration needed - automatic!
-// Typing "laptop" will only trigger search after 300ms of inactivity
-```
+Search automatically debounces with 300ms delay - no configuration needed.
 
 ### Loading & Error States
 
-Loading states are handled automatically:
+Loading states display automatically during data fetch. Manual control available:
 
 ```javascript
-// Loading is shown automatically during data fetch
-const swi = new SenangWebsIndex({
-  container: '#app',
-  data: './data.json', // Shows loading while fetching
-  itemTemplate: (item) => `...`
-});
-
-// Manual control if needed
 swi.showLoading();
-// ... do something async
 swi.hideLoading();
-
-// Display errors
-try {
-  await fetch('./data.json');
-} catch (error) {
-  swi.showError('Failed to load data', error.message);
-}
+swi.showError('Failed to load', 'Details here');
 ```
-- `data-swi-source="./data.json"` - **Required**: JSON data source URL
-- `data-swi-page-size="10"` - Items per page (default: 10)
-- `data-swi-search-key="name"` - Property to search (default: 'name')
 
-### Component Attributes
-
-- `data-swi-template="item"` - Marks the template element
-- `data-swi-value="item.property"` - Binds data to element text
-- `data-swi-search-input` - Designates search input field
-- `data-swi-search-action` - Designates search button
-- `data-swi-pagination` - Designates pagination container
+Empty states display automatically when no data or search results found.
 
 ## Examples
 
-### Example 1: Product Catalog
+### Product Catalog
 
 ```html
-<div
-  data-swi-id="catalog"
-  data-swi-source="./products.json"
-  data-swi-page-size="12"
->
-  <input type="text" data-swi-search-input placeholder="Search products..." />
-
+<div data-swi-id="catalog" 
+     data-swi-source="./products.json"
+     data-swi-search-key="name,category">
+  <input type="text" data-swi-search-input placeholder="Search..." />
+  
   <div class="swi-item-container swi-grid">
     <div data-swi-template="item" style="display: none;">
-      <img data-swi-value="item.image" alt="" />
       <h3 data-swi-value="item.name"></h3>
       <p data-swi-value="item.price"></p>
     </div>
   </div>
-
+  
   <div data-swi-pagination></div>
 </div>
 ```
 
-### Example 2: Data Table
+### Data Table
 
 ```javascript
 const table = new SenangWebsIndex({
-  container: "#data-table",
+  container: "#users",
   data: [
-    { id: 1, name: "John Doe", email: "john@example.com", role: "Admin" },
-    { id: 2, name: "Jane Smith", email: "jane@example.com", role: "User" },
+    { name: "John", email: "john@example.com", role: "Admin" },
+    { name: "Jane", email: "jane@example.com", role: "User" }
   ],
+  searchKey: ['name', 'email', 'role'],
   itemTemplate: (item) => `
     <tr class="swi-item">
-      <td>${item.id}</td>
       <td>${item.name}</td>
       <td>${item.email}</td>
       <td>${item.role}</td>
     </tr>
-  `,
-  pagination: {
-    enabled: true,
-    selector: "#pagination",
-    itemsPerPage: 20,
-  },
+  `
 });
 ```
 
 ## Styling
 
-SWI comes with default styles that you can customize. All classes use the `swi-` prefix:
+All CSS classes use the `swi-` prefix:
 
-- `.swi-container` - Main container
+**Main classes:**
 - `.swi-item` - Individual items
 - `.swi-item-container` - Items wrapper
-- `.swi-pagination-list` - Pagination list
+- `.swi-grid` - Grid layout modifier
+- `.swi-search-input` - Search field
 - `.swi-pagination-btn` - Pagination buttons
-- `.swi-active` - Active pagination button
+- `.swi-active` - Active state
+- `.swi-loading` - Loading container
+- `.swi-spinner` - Loading spinner
+- `.swi-empty-state` - Empty data message
+- `.swi-error` - Error message
 
-### Custom Styling
-
+**Example customization:**
 ```css
-/* Override default styles */
 .swi-item {
   background: #f5f5f5;
-  padding: 20px;
-  margin: 10px 0;
+  padding: 1rem;
+  border-radius: 4px;
 }
 
 .swi-pagination-btn {
@@ -316,19 +209,16 @@ SWI comes with default styles that you can customize. All classes use the `swi-`
 
 ## Browser Support
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-- No IE11 support (uses ES6+ features)
+- Chrome, Firefox, Safari, Edge (latest versions)
+- ES6+ required (no IE11 support)
 
-## Build from Source
+## Development
 
 ```bash
-# Install dependencies
+# Install
 npm install
 
-# Development build with watch
+# Development (watch mode)
 npm run dev
 
 # Production build
