@@ -15,7 +15,7 @@
     "search",
     "filter"
   ],
-  "author": "SenangWebs",
+  "author": "a-hakim",
   "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.23.0",
