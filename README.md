@@ -17,14 +17,19 @@ A lightweight JavaScript library for transforming JSON data into searchable, pag
 ## Installation
 
 **NPM:**
+
 ```bash
 npm install senangwebs-index
 ```
 
 **Direct include:**
+
 ```html
-<link rel="stylesheet" href="path/to/dist/swi.css" />
-<script src="path/to/dist/swi.js"></script>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/senangwebs-index@latest/dist/swi.css"
+/>
+<script src="https://unpkg.com/senangwebs-index@latest/dist/swi.js"></script>
 ```
 
 ## Quick Start
@@ -32,24 +37,25 @@ npm install senangwebs-index
 ### Declarative (HTML Only)
 
 ```html
-<div data-swi-id="products" 
-     data-swi-source="./data.json" 
-     data-swi-page-size="10"
-     data-swi-search-key="name">
-  
+<div
+  data-swi-id="products"
+  data-swi-source="./data.json"
+  data-swi-page-size="10"
+  data-swi-search-key="name"
+>
   <input type="text" data-swi-search-input placeholder="Search..." />
-  
+
   <div class="swi-item-container">
     <div data-swi-template="item" style="display: none;">
       <h3 data-swi-value="item.name"></h3>
       <p data-swi-value="item.description"></p>
     </div>
   </div>
-  
+
   <div data-swi-pagination></div>
 </div>
 
-<script src="dist/swi.js"></script>
+<script src="https://unpkg.com/senangwebs-index@latest/dist/swi.js"></script>
 ```
 
 ### Programmatic (JavaScript)
@@ -65,7 +71,7 @@ const swi = new SenangWebsIndex({
     </div>
   `,
   search: { enabled: true, searchKey: "name" },
-  pagination: { enabled: true, itemsPerPage: 10 }
+  pagination: { enabled: true, itemsPerPage: 10 },
 });
 ```
 
@@ -73,38 +79,38 @@ const swi = new SenangWebsIndex({
 
 ### Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `container` | String | Yes | CSS selector for container |
-| `data` | Array/String | Yes | Data array or JSON URL |
-| `itemTemplate` | Function | Yes | Function returning HTML for each item |
-| `search` | Object | No | Search configuration |
-| `pagination` | Object | No | Pagination configuration |
+| Option         | Type         | Required | Description                           |
+| -------------- | ------------ | -------- | ------------------------------------- |
+| `container`    | String       | Yes      | CSS selector for container            |
+| `data`         | Array/String | Yes      | Data array or JSON URL                |
+| `itemTemplate` | Function     | Yes      | Function returning HTML for each item |
+| `search`       | Object       | No       | Search configuration                  |
+| `pagination`   | Object       | No       | Pagination configuration              |
 
 ### Methods
 
-| Method | Description |
-|--------|-------------|
+| Method                     | Description                                    |
+| -------------------------- | ---------------------------------------------- |
 | `search(query, searchKey)` | Search data (searchKey can be string or array) |
-| `goToPage(page)` | Navigate to specific page |
-| `render()` | Re-render current data |
-| `destroy()` | Clean up event listeners |
-| `showLoading()` | Show loading spinner |
-| `hideLoading()` | Hide loading spinner |
-| `showError(msg, details)` | Display error message |
+| `goToPage(page)`           | Navigate to specific page                      |
+| `render()`                 | Re-render current data                         |
+| `destroy()`                | Clean up event listeners                       |
+| `showLoading()`            | Show loading spinner                           |
+| `hideLoading()`            | Hide loading spinner                           |
+| `showError(msg, details)`  | Display error message                          |
 
 ### HTML Attributes
 
-| Attribute | Required | Description |
-|-----------|----------|-------------|
-| `data-swi-id` | Yes | Unique identifier |
-| `data-swi-source` | Yes | JSON data URL |
-| `data-swi-page-size` | No | Items per page (default: 10) |
-| `data-swi-search-key` | No | Search field(s) - comma-separated for multiple |
-| `data-swi-template="item"` | Yes | Template element |
-| `data-swi-value="item.prop"` | Yes | Data binding |
-| `data-swi-search-input` | No | Search input |
-| `data-swi-pagination` | No | Pagination container |
+| Attribute                    | Required | Description                                    |
+| ---------------------------- | -------- | ---------------------------------------------- |
+| `data-swi-id`                | Yes      | Unique identifier                              |
+| `data-swi-source`            | Yes      | JSON data URL                                  |
+| `data-swi-page-size`         | No       | Items per page (default: 10)                   |
+| `data-swi-search-key`        | No       | Search field(s) - comma-separated for multiple |
+| `data-swi-template="item"`   | Yes      | Template element                               |
+| `data-swi-value="item.prop"` | Yes      | Data binding                                   |
+| `data-swi-search-input`      | No       | Search input                                   |
+| `data-swi-pagination`        | No       | Pagination container                           |
 
 ## Key Features
 
@@ -131,7 +137,7 @@ Loading states display automatically during data fetch. Manual control available
 ```javascript
 swi.showLoading();
 swi.hideLoading();
-swi.showError('Failed to load', 'Details here');
+swi.showError("Failed to load", "Details here");
 ```
 
 Empty states display automatically when no data or search results found.
@@ -141,18 +147,20 @@ Empty states display automatically when no data or search results found.
 ### Product Catalog
 
 ```html
-<div data-swi-id="catalog" 
-     data-swi-source="./products.json"
-     data-swi-search-key="name,category">
+<div
+  data-swi-id="catalog"
+  data-swi-source="./products.json"
+  data-swi-search-key="name,category"
+>
   <input type="text" data-swi-search-input placeholder="Search..." />
-  
+
   <div class="swi-item-container swi-grid">
     <div data-swi-template="item" style="display: none;">
       <h3 data-swi-value="item.name"></h3>
       <p data-swi-value="item.price"></p>
     </div>
   </div>
-  
+
   <div data-swi-pagination></div>
 </div>
 ```
@@ -164,16 +172,16 @@ const table = new SenangWebsIndex({
   container: "#users",
   data: [
     { name: "John", email: "john@example.com", role: "Admin" },
-    { name: "Jane", email: "jane@example.com", role: "User" }
+    { name: "Jane", email: "jane@example.com", role: "User" },
   ],
-  searchKey: ['name', 'email', 'role'],
+  searchKey: ["name", "email", "role"],
   itemTemplate: (item) => `
     <tr class="swi-item">
       <td>${item.name}</td>
       <td>${item.email}</td>
       <td>${item.role}</td>
     </tr>
-  `
+  `,
 });
 ```
 
@@ -182,6 +190,7 @@ const table = new SenangWebsIndex({
 All CSS classes use the `swi-` prefix:
 
 **Main classes:**
+
 - `.swi-item` - Individual items
 - `.swi-item-container` - Items wrapper
 - `.swi-grid` - Grid layout modifier
@@ -194,6 +203,7 @@ All CSS classes use the `swi-` prefix:
 - `.swi-error` - Error message
 
 **Example customization:**
+
 ```css
 .swi-item {
   background: #f5f5f5;

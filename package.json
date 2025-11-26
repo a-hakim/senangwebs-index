@@ -1,6 +1,6 @@
 {
   "name": "senangwebs-index",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight JavaScript library for transforming JSON data into searchable and paginated HTML views",
   "main": "dist/swi.js",
   "scripts": {

@@ -3,9 +3,6 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# Build output
-dist/
-
 # Logs
 *.log
 npm-debug.log*
