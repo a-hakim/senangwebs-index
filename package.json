@@ -1,12 +1,12 @@
 {
   "name": "senangwebs-index",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A lightweight JavaScript library for transforming JSON data into searchable and paginated HTML views",
   "main": "dist/swi.js",
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack --mode development --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run build && node --test"
   },
   "keywords": [
     "json",

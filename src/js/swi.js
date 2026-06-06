@@ -63,10 +63,22 @@ class SenangWebsIndex {
     return {
       enabled: search.enabled !== false,
       selector: search.selector || null,
-      searchKey: search.searchKey || 'name',
+      searchKey: this._normalizeSearchKeys(search.searchKey),
       inputElement: null,
       actionElement: null
     };
+  }
+
+  /**
+   * Normalize string, comma-separated, or array search keys
+   */
+  _normalizeSearchKeys(searchKey = 'name') {
+    const keys = Array.isArray(searchKey) ? searchKey : String(searchKey).split(',');
+    const normalizedKeys = keys
+      .map(key => String(key).trim())
+      .filter(Boolean);
+
+    return normalizedKeys.length > 0 ? normalizedKeys : ['name'];
   }
 
   /**
@@ -236,11 +248,8 @@ class SenangWebsIndex {
   /**
    * Perform search - supports single or multiple fields
    */
-  search(query) {
-    // Support both string and array of search keys
-    const searchKeys = Array.isArray(this.searchConfig.searchKey) 
-      ? this.searchConfig.searchKey 
-      : [this.searchConfig.searchKey];
+  search(query, searchKey = this.searchConfig.searchKey) {
+    const searchKeys = this._normalizeSearchKeys(searchKey);
     
     if (!query || query.trim() === '') {
       this.filteredData = [...this.data];
@@ -250,7 +259,9 @@ class SenangWebsIndex {
         // Search across all specified fields
         return searchKeys.some(key => {
           const value = item[key];
-          return value && value.toString().toLowerCase().includes(lowerQuery);
+          return value !== undefined
+            && value !== null
+            && value.toString().toLowerCase().includes(lowerQuery);
         });
       });
     }

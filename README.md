@@ -116,14 +116,24 @@ const swi = new SenangWebsIndex({
 
 ### Multi-field Search
 
-Search across multiple properties:
+Search across multiple properties. Arrays and comma-separated strings are both
+supported; surrounding whitespace and empty entries are ignored:
 
 ```javascript
 // JavaScript API
-searchKey: ['name', 'category', 'description']
+search: {
+  enabled: true,
+  searchKey: ['name', 'category', 'description']
+}
 
 // HTML attribute
 data-swi-search-key="name,category,description"
+```
+
+You can also override the configured fields for a single search:
+
+```javascript
+swi.search("electronics", ["name", "category"]);
 ```
 
 ### Debounced Search
@@ -233,6 +243,9 @@ npm run dev
 
 # Production build
 npm run build
+
+# Build and run the test suite
+npm test
 ```
 
 ## License
