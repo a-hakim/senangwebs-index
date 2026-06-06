@@ -2,6 +2,8 @@
 
 A lightweight JavaScript library for transforming JSON data into searchable, paginated HTML views.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
+
 ![SenangWebs Index Preview](https://raw.githubusercontent.com/a-hakim/senangwebs-index/master/swi_preview.png)
 
 ## Features
