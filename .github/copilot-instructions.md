@@ -1,103 +1,32 @@
-# SenangWebs Index (SWI) - AI Agent Instructions
+# SenangWebs Index maintainer instructions
 
-## Project Overview
-SWI is a zero-dependency JavaScript library (~15KB) that transforms JSON data into searchable, paginated HTML views. It supports **two distinct initialization methods** that share the same underlying architecture.
+SWI is a browser library with zero runtime dependencies. Preserve its documented 1.x API, `data-swi-*` attributes, `swi-` classes, UMD globals, and CommonJS constructor export.
 
-## Critical Architecture Pattern: Dual Initialization System
+## Architecture
 
-### 1. Programmatic API (`SenangWebsIndex` class)
-- Direct JavaScript instantiation with template functions
-- Container accepts **both CSS selectors AND DOM elements** (important for inheritance)
-- Example: `new SenangWebsIndex({ container: '#app', data: './data.json', itemTemplate: (item) => '...' })`
+- `src/js/swi.js` contains the constructor and declarative handler. Both initialization styles share readiness, data loading, search, pagination, and cleanup.
+- `instance.ready` resolves after initial rendering or rejects on failure. Observe failures internally without changing the promise exposed to callers.
+- Loads use an operation token and AbortController. Destruction must cancel readiness and prevent late data assignment, listener attachment, or rendering, even if a fetch implementation ignores cancellation.
+- All listener registrations go through `_listen()` and are removed by `_clearBindings()`. Debounce timers are cancellable. Pagination uses one delegated listener.
+- Declarative templates are retained independently of rendering and restored on destruction. Container registrations are idempotent; identifiers must be unique. Nested instances own their own controls.
+- Validate required options and local data before DOM changes. Validate every remote record. Page sizes are positive safe integers.
 
-### 2. Declarative HTML (`SWIDeclarativeHandler` + `SWIDeclarativeInstance`)
-- Zero JavaScript needed - uses `data-swi-*` attributes
-- `SWIDeclarativeHandler.init()` scans DOM on `DOMContentLoaded` for `[data-swi-id]` elements
-- Creates `SWIDeclarativeInstance` (extends `SenangWebsIndex`) with auto-generated template functions from `[data-swi-template="item"]` elements
-- Template uses `[data-swi-value="item.propertyName"]` for data binding via `textContent`
+## Rendering and accessibility
 
-**Key Inheritance Detail**: `SWIDeclarativeInstance` extends `SenangWebsIndex` and overrides `_init()` to handle declarative-specific search setup. The parent constructor must accept DOM elements directly (not just selectors) because declarative mode passes pre-selected elements.
+- Prefer DOM `Element` templates with `textContent` for untrusted data. HTML string templates remain trusted markup with exactly one root element.
+- Library messages and declarative root/descendant bindings always use text insertion.
+- Build the next item view before replacing the current one. Preserve table/list child structure for generated states.
+- Keep bounded pagination, accessible busy/status/current-page semantics, keyboard focus retention, explicit button types, and reduced-motion styling.
+- Retry uses a registered handler to reload the current instance, with no inline script or page reload.
 
-## Build System & Commands
+## Build and packaging
 
-```bash
-npm run build    # Production: Webpack + Babel + Terser (minified, no LICENSE.txt)
-npm run dev      # Development: Watch mode with --mode development
-```
+Use Node.js 24 and `npm ci` with the committed lockfile. Webpack builds CSS and JavaScript together into `dist/swi.js` and `dist/swi.css`, removing stale assets. Keep Terser's `extractComments: false`; do not produce an extra `styles.js` UMD bundle. Browser targets match the README; IE11 is unsupported.
 
-**Critical**: `webpack.config.js` has `optimization.minimizer` configured with `extractComments: false` to prevent `swi.js.LICENSE.txt` generation. Don't remove this or you'll create unwanted license files.
+Package version metadata is authoritative. Update `package.json`, `package-lock.json`, `SKILLS.md`, README examples, and release notes together. `prepack` builds before packing; the file allowlist defines the distributable contents.
 
-**UMD Export Pattern**: Entry exports `default SenangWebsIndex` but also exposes:
-- `window.SenangWebsIndex` (full class)
-- `window.SWI` (shorthand)
-- `window.SWIDeclarativeHandler` (for accessing instances by ID)
+## Validation
 
-## State Management Pattern
-Each instance maintains:
-- `this.data` - Original dataset (immutable after load)
-- `this.filteredData` - Current filtered view (modified by search)
-- `this.currentPage` - Pagination state
-- `this.eventListeners` - Array of `{element, event, handler}` for cleanup in `destroy()`
+**Ask before running any unit tests unless the current session already authorizes them.** Tests use `node:test` and development-only jsdom, including the actual bundle and example scripts. `npm test` rebuilds first. `npm run verify:package` checks the actual tarball, CommonJS import, CDN globals, CSS, and both initialization modes. CI checks reproducible installation, tests, package contents, dependency advisories, and committed distribution consistency.
 
-**Search flow**: `search(query)` → filters `this.data` into `this.filteredData` → resets `currentPage` to 1 → calls `render()`
-
-**Pagination flow**: `goToPage(n)` → updates `currentPage` → calls `render()` → `_getPaginatedData()` slices `filteredData`
-
-## Template System
-
-### Programmatic
-User provides function: `itemTemplate: (item) => '<div>...' + item.name + '...</div>'`
-
-### Declarative
-`SWIDeclarativeHandler.createTemplateFunction()` generates a function that:
-1. Clones the `[data-swi-template="item"]` element
-2. Finds all `[data-swi-value]` descendants
-3. Extracts property path (e.g., `"item.name"` → `"name"`)
-4. Sets `element.textContent = item[propertyName]`
-5. Returns `clone.outerHTML`
-
-## CSS Convention
-All classes use `swi-` prefix: `.swi-item`, `.swi-pagination-btn`, `.swi-active`, `.swi-disabled`
-
-Source: `src/css/swi.css` - includes responsive breakpoints at 768px
-
-## Testing Strategy
-No formal test framework - uses manual browser tests:
-- `examples/test.html` - Automated test suite with visual results
-- Tests cover: library loading, programmatic API, declarative init, search, pagination, cleanup
-- Uses pattern: `try { /* test */ recordTest(name, true) } catch(e) { recordTest(name, false, e.message) }`
-
-## Common Pitfalls
-
-1. **Container Resolution**: When extending `SenangWebsIndex`, always ensure the parent constructor receives either a selector string OR a DOM element, never undefined. Check `typeof options.container`.
-
-2. **Event Listener Cleanup**: Always push to `this.eventListeners` array when adding listeners. Pattern:
-   ```javascript
-   element.addEventListener(event, handler);
-   this.eventListeners.push({ element, event, handler });
-   ```
-
-3. **Async Init**: `_init()` and `_loadData()` are async. If overriding in subclass, maintain async/await pattern and proper error handling.
-
-4. **Template Element Visibility**: Declarative templates MUST have `style="display: none;"` or they'll show before processing. The library sets `display: ''` on clones.
-
-5. **Data Source Types**: `options.data` accepts Array OR String (URL). Check with `Array.isArray()` and `typeof === 'string'`.
-
-## File Structure
-- `src/js/swi.js` - Single-file library (585 lines): `SenangWebsIndex` → `SWIDeclarativeHandler` → `SWIDeclarativeInstance` → auto-init code
-- `src/css/swi.css` - Complete styles including utilities (`.swi-hidden`, `.swi-grid`)
-- `examples/` - Five demos: `index.html` (landing), `demo.html` (interactive), `declarative.html`, `programmatic.html`, `test.html`
-- `spec.md` - Authoritative specification (reference for feature disputes)
-
-## Debugging
-Use browser console:
-```javascript
-SWIDeclarativeHandler.getInstance('products') // Get declarative instance by ID
-instance.data // View original dataset
-instance.filteredData // View current filtered data
-instance.search('test') // Programmatic search
-instance.goToPage(2) // Navigate
-```
-
-## Philosophy
-"Senang" (Malay for "easy") - prioritize simplicity. Declarative mode should need zero JavaScript knowledge. Programmatic mode should be obvious for JS developers. No dependencies, clean class-based architecture.
+DOM simulation does not prove browser or screen-reader behavior. Complete and record the real-browser checks in `RELEASE.md` before publishing. Publishing requires separate authorization.

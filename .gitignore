@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Logs
@@ -29,3 +28,5 @@ coverage/
 # Temporary files
 tmp/
 temp/
+.cache/
+*.tgz

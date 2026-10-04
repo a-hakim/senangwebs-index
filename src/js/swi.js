@@ -1,704 +1,578 @@
 /**
  * SenangWebs Index (SWI)
- * A lightweight JavaScript library for transforming JSON data into searchable and paginated HTML views
- * @version 1.1.0
+ * Searchable and paginated HTML views from JSON data.
+ * Package metadata is the source of truth for the release version.
  */
+
+function isElement(value) {
+  return !!value && value.nodeType === 1 && typeof value.querySelector === 'function';
+}
+
+function validateData(data) {
+  if (!Array.isArray(data)) throw new Error('SWI: Data must be an array of objects');
+  if (Array.from(data).some(item => item === null || typeof item !== 'object' || Array.isArray(item))) {
+    throw new Error('SWI: Data items must be non-null objects');
+  }
+}
+
+function validatePageSize(value) {
+  if (!Number.isSafeInteger(value) || value < 1) throw new Error('SWI: itemsPerPage must be a positive safe integer');
+  return value;
+}
+
+function abortError() {
+  const error = new Error('SWI: Initialization was cancelled');
+  error.name = 'AbortError';
+  return error;
+}
 
 class SenangWebsIndex {
   constructor(options = {}) {
-    // Validate required options for programmatic initialization
-    if (!options.container) {
-      throw new Error('SWI: container selector is required');
+    if (!options || typeof options !== 'object') throw new Error('SWI: options must be an object');
+    if (!options.container) throw new Error('SWI: container selector is required');
+    if (typeof options.itemTemplate !== 'function') throw new Error('SWI: itemTemplate function is required');
+    if (Array.isArray(options.data)) validateData(options.data);
+    else if (typeof options.data !== 'string' || !options.data.trim()) {
+      throw new Error('SWI: data must be an array of objects or a nonempty JSON URL');
     }
-    if (!options.data) {
-      throw new Error('SWI: data source is required');
-    }
-    if (!options.itemTemplate && typeof options.itemTemplate !== 'function') {
-      throw new Error('SWI: itemTemplate function is required');
-    }
-
-    // Store configuration - handle both selector strings and direct elements
     if (typeof options.container === 'string') {
+      if (typeof document === 'undefined') throw new Error('SWI: a browser DOM is required');
       this.container = document.querySelector(options.container);
-      if (!this.container) {
-        throw new Error(`SWI: container element not found: ${options.container}`);
-      }
-    } else if (options.container instanceof Element) {
-      this.container = options.container;
-    } else {
-      throw new Error('SWI: container must be a selector string or DOM element');
-    }
+      if (!this.container) throw new Error(`SWI: container element not found: ${options.container}`);
+    } else if (isElement(options.container)) this.container = options.container;
+    else throw new Error('SWI: container must be a selector string or DOM element');
 
+    this._document = this.container.ownerDocument;
     this.dataSource = options.data;
     this.itemTemplate = options.itemTemplate;
+    this.searchConfig = this._parseSearchConfig(options.search);
+    this.paginationConfig = this._parsePaginationConfig(options.pagination);
     this.data = [];
     this.filteredData = [];
     this.currentPage = 1;
-    
-    // Search configuration
-    this.searchConfig = this._parseSearchConfig(options.search);
-    
-    // Pagination configuration
-    this.paginationConfig = this._parsePaginationConfig(options.pagination);
-    
-    // Store event listeners for cleanup
     this.eventListeners = [];
-
-    // Initialize
-    this._init();
+    this._timers = new Set();
+    this._query = '';
+    this._destroyed = false;
+    this._state = 'idle';
+    this._originalBusy = this.container.getAttribute('aria-busy');
+    this._originalTabIndex = this.container.getAttribute('tabindex');
+    // Resolve and validate controls before changing the host's DOM.
+    this._resolveControls();
+    this._startInitialization();
   }
 
-  /**
-   * Parse search configuration
-   */
   _parseSearchConfig(search) {
-    if (!search) {
-      return { enabled: false };
+    if (search != null && typeof search !== 'boolean' && typeof search !== 'object') {
+      throw new Error('SWI: search must be a boolean or configuration object');
     }
-
-    if (typeof search === 'boolean') {
-      return { enabled: search };
-    }
-
+    const config = search && typeof search === 'object' ? search : {};
     return {
-      enabled: search.enabled !== false,
-      selector: search.selector || null,
-      searchKey: this._normalizeSearchKeys(search.searchKey),
-      inputElement: null,
-      actionElement: null
+      enabled: !!search && config.enabled !== false,
+      selector: config.selector || null,
+      searchKey: this._normalizeSearchKeys(config.searchKey),
+      inputElement: config.inputElement || null,
+      actionElement: config.actionElement || null
     };
   }
 
-  /**
-   * Normalize string, comma-separated, or array search keys
-   */
   _normalizeSearchKeys(searchKey = 'name') {
     const keys = Array.isArray(searchKey) ? searchKey : String(searchKey).split(',');
-    const normalizedKeys = keys
-      .map(key => String(key).trim())
-      .filter(Boolean);
-
-    return normalizedKeys.length > 0 ? normalizedKeys : ['name'];
+    const normalized = keys.map(key => String(key).trim()).filter(Boolean);
+    return normalized.length ? normalized : ['name'];
   }
 
-  /**
-   * Parse pagination configuration
-   */
   _parsePaginationConfig(pagination) {
-    if (!pagination) {
-      return { enabled: false, itemsPerPage: 10 };
+    if (pagination != null && typeof pagination !== 'boolean' && typeof pagination !== 'object') {
+      throw new Error('SWI: pagination must be a boolean or configuration object');
     }
-
-    if (typeof pagination === 'boolean') {
-      return { enabled: pagination, itemsPerPage: 10 };
-    }
-
+    const config = pagination && typeof pagination === 'object' ? pagination : {};
     return {
-      enabled: pagination.enabled !== false,
-      selector: pagination.selector || null,
-      itemsPerPage: pagination.itemsPerPage || 10,
-      containerElement: null
+      enabled: !!pagination && config.enabled !== false,
+      selector: config.selector || null,
+      itemsPerPage: validatePageSize(config.itemsPerPage === undefined ? 10 : config.itemsPerPage),
+      containerElement: config.containerElement || null
     };
   }
 
-  /**
-   * Utility: Debounce function to limit execution rate
-   */
+  _resolveControl(value, name) {
+    const element = typeof value === 'string' ? this._document.querySelector(value) : value;
+    if (!isElement(element)) throw new Error(`SWI: ${name} element not found or invalid`);
+    if (element === this.container || this.container.contains(element)
+      || (name === 'pagination' && element.contains(this.container))) {
+      throw new Error(`SWI: ${name} must be outside the rendered item container`);
+    }
+    return element;
+  }
+
+  _resolveControls() {
+    const search = this.searchConfig;
+    if (search.enabled) {
+      if (search.inputElement) search.inputElement = this._resolveControl(search.inputElement, 'search input');
+      else if (search.selector) {
+        const target = this._resolveControl(search.selector, 'search');
+        search.inputElement = target.matches('input[type="text"], input[type="search"], input:not([type])')
+          ? target : target.querySelector('input[type="text"], input[type="search"], input:not([type])');
+        if (!search.inputElement) throw new Error('SWI: search input element not found');
+      }
+      if (search.inputElement && !search.inputElement.matches('input')) throw new Error('SWI: search input must be an input element');
+      if (search.inputElement) search.inputElement = this._resolveControl(search.inputElement, 'search input');
+      if (search.actionElement) search.actionElement = this._resolveControl(search.actionElement, 'search action');
+    }
+    const pagination = this.paginationConfig;
+    if (pagination.enabled && (pagination.containerElement || pagination.selector)) {
+      pagination.containerElement = this._resolveControl(pagination.containerElement || pagination.selector, 'pagination');
+    }
+  }
+
+  _listen(element, event, handler) {
+    element.addEventListener(event, handler);
+    this.eventListeners.push({ element, event, handler });
+  }
+
+  _clearBindings() {
+    this.eventListeners.forEach(({ element, event, handler }) => element.removeEventListener(event, handler));
+    this.eventListeners = [];
+    this._timers.forEach(timeout => clearTimeout(timeout));
+    this._timers.clear();
+    this._searchHandler = null;
+  }
+
   _debounce(func, wait = 300) {
     let timeout;
-    return (...args) => {
+    const cancel = () => {
       clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(this, args), wait);
+      this._timers.delete(timeout);
     };
+    const handler = (...args) => {
+      cancel();
+      if (this._destroyed) return;
+      timeout = setTimeout(() => {
+        this._timers.delete(timeout);
+        if (!this._destroyed) func.apply(this, args);
+      }, wait);
+      this._timers.add(timeout);
+    };
+    handler.cancel = cancel;
+    return handler;
   }
 
-  /**
-   * Show loading state
-   */
-  showLoading() {
-    this.container.innerHTML = `
-      <div class="swi-loading">
-        <div class="swi-spinner"></div>
-        <p>Loading data...</p>
-      </div>
-    `;
+  _node(tag, className, text) {
+    const node = this._document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = String(text);
+    return node;
   }
 
-  /**
-   * Hide loading state
-   */
-  hideLoading() {
-    const loading = this.container.querySelector('.swi-loading');
-    if (loading) {
-      loading.remove();
+  _clearPagination() {
+    if (this.paginationConfig.enabled && this.paginationConfig.containerElement) {
+      this.paginationConfig.containerElement.replaceChildren();
     }
   }
 
-  /**
-   * Show error state
-   */
-  showError(message, details = '') {
-    this.container.innerHTML = `
-      <div class="swi-error">
-        <div class="swi-error-icon">⚠️</div>
-        <h3>${message}</h3>
-        ${details ? `<p class="swi-error-details">${details}</p>` : ''}
-        <button class="swi-error-retry" onclick="location.reload()">Retry</button>
-      </div>
-    `;
+  _status(className, icon, heading, message, role = 'status') {
+    const status = this._node('div', className);
+    status.setAttribute('role', role);
+    status.setAttribute('aria-live', role === 'alert' ? 'assertive' : 'polite');
+    const iconNode = this._node('div', `${className}-icon`, icon);
+    iconNode.setAttribute('aria-hidden', 'true');
+    status.append(iconNode, this._node('h3', '', heading));
+    if (message) status.append(this._node('p', '', message));
+    return status;
   }
 
-  /**
-   * Initialize the library
-   */
-  async _init() {
+  _wrapState(state, hidden = false) {
+    if (this.container.matches('tbody, thead, tfoot')) {
+      const row = this._node('tr', hidden ? 'swi-sr-only' : 'swi-state-row');
+      const cell = this._node('td');
+      cell.colSpan = Math.max(1, this.container.closest('table')?.querySelector('tr')?.children.length || 1);
+      cell.append(state);
+      row.append(cell);
+      return row;
+    }
+    if (this.container.matches('ul, ol')) {
+      const item = this._node('li', hidden ? 'swi-sr-only' : 'swi-state-item');
+      item.append(state);
+      return item;
+    }
+    return state;
+  }
+
+  _replaceState(state) {
+    this.container.replaceChildren(this._wrapState(state));
+  }
+
+  showLoading() {
+    if (this._destroyed) return;
+    const loading = this._node('div', 'swi-loading');
+    loading.setAttribute('role', 'status');
+    loading.setAttribute('aria-live', 'polite');
+    const spinner = this._node('div', 'swi-spinner');
+    spinner.setAttribute('aria-hidden', 'true');
+    loading.append(spinner, this._node('p', '', 'Loading data...'));
+    this.container.setAttribute('aria-busy', 'true');
+    this._replaceState(loading);
+    this._clearPagination();
+  }
+
+  hideLoading() {
+    if (this._destroyed) return;
+    const loading = this.container.querySelector('.swi-loading');
+    if (loading) (loading.closest('.swi-state-row, .swi-state-item') || loading).remove();
+    this.container.setAttribute('aria-busy', 'false');
+  }
+
+  showError(message, details = '') {
+    if (this._destroyed) return;
+    if (!this.eventListeners.some(listener => listener.handler === this._retryHandler)) {
+      this._retryHandler = event => {
+        if (!event.target.closest?.('.swi-error-retry') || this._destroyed) return;
+        event.preventDefault();
+        this._startInitialization();
+      };
+      this._listen(this.container, 'click', this._retryHandler);
+    }
+    const error = this._status('swi-error', '\u26a0\ufe0f', message, '', 'alert');
+    if (details) error.append(this._node('p', 'swi-error-details', details));
+    const retry = this._node('button', 'swi-error-retry', 'Retry');
+    retry.type = 'button';
+    error.append(retry);
+    this.container.setAttribute('aria-busy', 'false');
+    this._replaceState(error);
+    this._clearPagination();
+  }
+
+  _startInitialization() {
+    if (this._destroyed) return;
+    this._operation?.controller.abort();
+    this._clearBindings();
+    const operation = { controller: new AbortController() };
+    this._operation = operation;
+    this._state = 'loading';
+    const signal = operation.controller.signal;
+    let rejectAbort;
+    const cancelled = new Promise((resolve, reject) => { rejectAbort = () => reject(abortError()); });
+    signal.addEventListener('abort', rejectAbort, { once: true });
+    this.ready = Promise.race([this._init(operation), cancelled])
+      .finally(() => signal.removeEventListener('abort', rejectAbort));
+    // Observe rejection without changing the rejecting promise exposed to awaiters.
+    this.ready.catch(() => {});
+  }
+
+  _assertActive(operation) {
+    if (this._destroyed || this._operation !== operation || operation.controller.signal.aborted) throw abortError();
+  }
+
+  async _init(operation) {
     try {
-      // Show loading state
       this.showLoading();
-      
-      // Load data
-      await this._loadData();
-      
-      // Hide loading state
+      await this._loadData(operation);
+      this._assertActive(operation);
+      this._state = 'ready';
       this.hideLoading();
-      
-      // Setup search if enabled
-      if (this.searchConfig.enabled && this.searchConfig.selector) {
-        this._setupSearch();
-      }
-      
-      // Setup pagination if enabled
-      if (this.paginationConfig.enabled && this.paginationConfig.selector) {
-        this.paginationConfig.containerElement = document.querySelector(this.paginationConfig.selector);
-      }
-      
-      // Initial render
-      this.render();
+      this._setupSearch();
+      this._setupPagination();
+      this.search(this._query);
+      this._assertActive(operation);
+      return this;
     } catch (error) {
-      console.error('SWI: Initialization failed', error);
-      this.showError('Failed to load data', error.message);
+      if (!this._destroyed && this._operation === operation && !operation.controller.signal.aborted) {
+        this._state = 'error';
+        this._clearBindings();
+        this.showError('Failed to load data', error.message);
+      }
       throw error;
     }
   }
 
-  /**
-   * Load data from source
-   */
-  async _loadData() {
-    if (Array.isArray(this.dataSource)) {
-      // Validate array data
-      if (this.dataSource.length > 0 && typeof this.dataSource[0] !== 'object') {
-        throw new Error('SWI: Data items must be objects');
-      }
-      this.data = this.dataSource;
-      this.filteredData = [...this.data];
-    } else if (typeof this.dataSource === 'string') {
-      try {
-        const response = await fetch(this.dataSource);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        // Validate that data is an array
-        if (!Array.isArray(data)) {
-          throw new Error('Data must be an array of objects');
-        }
-        
-        // Validate data structure
-        if (data.length > 0 && typeof data[0] !== 'object') {
-          throw new Error('Data items must be objects');
-        }
-        
-        this.data = data;
-        this.filteredData = [...this.data];
-      } catch (error) {
-        console.error('SWI: Failed to load data', error);
-        throw error;
-      }
+  async _loadData(operation = this._operation) {
+    let data = this.dataSource;
+    if (typeof data === 'string') {
+      const response = await fetch(data, { signal: operation.controller.signal });
+      this._assertActive(operation);
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      data = await response.json();
     }
+    this._assertActive(operation);
+    validateData(data);
+    this.data = [...data];
+    this.filteredData = [...data];
   }
 
-  /**
-   * Setup search functionality
-   */
   _setupSearch() {
-    const searchContainer = document.querySelector(this.searchConfig.selector);
-    if (!searchContainer) return;
-
-    this.searchConfig.inputElement = searchContainer.querySelector('input[type="text"]');
-    
-    if (this.searchConfig.inputElement) {
-      // Use debounced search handler
-      const searchHandler = this._debounce((e) => {
-        this.search(e.target.value);
-      }, 300);
-      
-      this.searchConfig.inputElement.addEventListener('input', searchHandler);
-      this.eventListeners.push({
-        element: this.searchConfig.inputElement,
-        event: 'input',
-        handler: searchHandler
+    const { enabled, inputElement, actionElement } = this.searchConfig;
+    if (!enabled || !inputElement) return;
+    this._searchHandler = this._debounce(query => this.search(query));
+    this._listen(inputElement, 'input', () => this._searchHandler(inputElement.value));
+    if (actionElement) {
+      this._listen(actionElement, 'click', event => {
+        event.preventDefault();
+        this._searchHandler.cancel();
+        this.search(inputElement.value);
       });
     }
   }
 
-  /**
-   * Perform search - supports single or multiple fields
-   */
+  _setupPagination() {
+    const { enabled, containerElement } = this.paginationConfig;
+    if (!enabled || !containerElement) return;
+    this._listen(containerElement, 'click', event => {
+      const button = event.target.closest?.('.swi-pagination-btn');
+      if (!button || !containerElement.contains(button) || button.disabled) return;
+      event.preventDefault();
+      this.goToPage(Number(button.dataset.page));
+    });
+  }
+
   search(query, searchKey = this.searchConfig.searchKey) {
-    const searchKeys = this._normalizeSearchKeys(searchKey);
-    
-    if (!query || query.trim() === '') {
-      this.filteredData = [...this.data];
-    } else {
-      const lowerQuery = query.toLowerCase();
-      this.filteredData = this.data.filter(item => {
-        // Search across all specified fields
-        return searchKeys.some(key => {
-          const value = item[key];
-          return value !== undefined
-            && value !== null
-            && value.toString().toLowerCase().includes(lowerQuery);
-        });
-      });
-    }
-    
+    if (this._destroyed) return;
+    const keys = this._normalizeSearchKeys(searchKey);
+    const text = query == null ? '' : String(query);
+    this._query = text;
+    const lower = text.toLowerCase();
+    this.filteredData = text.trim() === '' ? [...this.data] : this.data.filter(item =>
+      keys.some(key => item[key] != null && String(item[key]).toLowerCase().includes(lower)));
     this.currentPage = 1;
     this.render();
   }
 
-  /**
-   * Render the data
-   */
   render() {
-    // Clear container
-    this.container.innerHTML = '';
-    
-    // Get paginated data
-    const paginatedData = this._getPaginatedData();
-    
-    // Show empty state if no data
-    if (paginatedData.length === 0) {
-      const message = this.data.length === 0 
-        ? 'No data available' 
-        : 'No results found. Try a different search term.';
-      
-      this.container.innerHTML = `
-        <div class="swi-empty-state">
-          <div class="swi-empty-icon">📭</div>
-          <h3>No Results</h3>
-          <p>${message}</p>
-        </div>
-      `;
-      
-      // Clear pagination
-      if (this.paginationConfig.enabled && this.paginationConfig.containerElement) {
-        this.paginationConfig.containerElement.innerHTML = '';
-      }
-      
-      return;
-    }
-    
-    // Render items
-    paginatedData.forEach(item => {
-      const itemHTML = this.itemTemplate(item);
-      const itemElement = this._createElementFromHTML(itemHTML);
-      this.container.appendChild(itemElement);
+    if (this._destroyed || this._state === 'loading') return;
+    const operation = this._operation;
+    const paginated = this._getPaginatedData();
+    const fragment = this._document.createDocumentFragment();
+    const elements = new Set();
+    paginated.forEach(item => {
+      if (this._destroyed || this._operation !== operation || this._state === 'loading') return;
+      const result = this.itemTemplate(item);
+      const element = isElement(result) ? result : this._createElementFromHTML(result);
+      if (elements.has(element)) throw new Error('SWI: itemTemplate must return a separate element for each item');
+      elements.add(element);
     });
-    
-    // Render pagination
-    if (this.paginationConfig.enabled && this.paginationConfig.containerElement) {
-      this._renderPagination();
+    if (this._destroyed || this._operation !== operation || this._state === 'loading') return;
+    elements.forEach(element => fragment.append(element));
+    // Validate rendered items before replacing the previous view.
+    if (!paginated.length) {
+      const empty = this._status('swi-empty-state', '\ud83d\udced', 'No Results', this.data.length
+        ? 'No results found. Try a different search term.' : 'No data available');
+      fragment.append(this._wrapState(empty));
+    } else {
+      const announcement = this._node('p', 'swi-sr-only',
+        `${this.filteredData.length} results. Page ${this.currentPage} of ${this.paginationConfig.enabled
+          ? Math.ceil(this.filteredData.length / this.paginationConfig.itemsPerPage) : 1}.`);
+      announcement.setAttribute('role', 'status');
+      announcement.setAttribute('aria-live', 'polite');
+      fragment.append(this._wrapState(announcement, true));
     }
+    this.container.replaceChildren(fragment);
+    this.container.setAttribute('aria-busy', 'false');
+    if (this.paginationConfig.enabled && this.paginationConfig.containerElement) this._renderPagination();
   }
 
-  /**
-   * Get paginated data for current page
-   */
   _getPaginatedData() {
-    if (!this.paginationConfig.enabled) {
-      return this.filteredData;
-    }
-    
+    if (!this.paginationConfig.enabled) return this.filteredData;
     const start = (this.currentPage - 1) * this.paginationConfig.itemsPerPage;
-    const end = start + this.paginationConfig.itemsPerPage;
-    return this.filteredData.slice(start, end);
+    return this.filteredData.slice(start, start + this.paginationConfig.itemsPerPage);
   }
 
-  /**
-   * Render pagination controls
-   */
   _renderPagination() {
-    const totalPages = Math.ceil(this.filteredData.length / this.paginationConfig.itemsPerPage);
-    
-    if (totalPages <= 1) {
-      this.paginationConfig.containerElement.innerHTML = '';
+    const container = this.paginationConfig.containerElement;
+    const active = this._document.activeElement;
+    const focusKey = container.contains(active) ? active.dataset.swiFocus : null;
+    const total = Math.ceil(this.filteredData.length / this.paginationConfig.itemsPerPage);
+    if (total <= 1) {
+      container.replaceChildren();
+      if (focusKey) {
+        if (this.searchConfig.inputElement) this.searchConfig.inputElement.focus();
+        else {
+          this.container.setAttribute('tabindex', '-1');
+          this.container.focus();
+        }
+      }
       return;
     }
-    
-    let paginationHTML = '<ul class="swi-pagination-list">';
-    
-    // Previous button
-    paginationHTML += `
-      <li class="swi-pagination-item ${this.currentPage === 1 ? 'swi-disabled' : ''}">
-        <button class="swi-pagination-btn" data-page="${this.currentPage - 1}" ${this.currentPage === 1 ? 'disabled' : ''}>
-          Previous
-        </button>
-      </li>
-    `;
-    
-    // Page numbers
-    for (let i = 1; i <= totalPages; i++) {
-      paginationHTML += `
-        <li class="swi-pagination-item ${i === this.currentPage ? 'swi-active' : ''}">
-          <button class="swi-pagination-btn" data-page="${i}">
-            ${i}
-          </button>
-        </li>
-      `;
-    }
-    
-    // Next button
-    paginationHTML += `
-      <li class="swi-pagination-item ${this.currentPage === totalPages ? 'swi-disabled' : ''}">
-        <button class="swi-pagination-btn" data-page="${this.currentPage + 1}" ${this.currentPage === totalPages ? 'disabled' : ''}>
-          Next
-        </button>
-      </li>
-    `;
-    
-    paginationHTML += '</ul>';
-    
-    this.paginationConfig.containerElement.innerHTML = paginationHTML;
-    
-    // Add event listeners to pagination buttons
-    const buttons = this.paginationConfig.containerElement.querySelectorAll('.swi-pagination-btn');
-    buttons.forEach(button => {
-      const clickHandler = (e) => {
-        e.preventDefault();
-        const page = parseInt(button.dataset.page);
-        if (page >= 1 && page <= totalPages) {
-          this.goToPage(page);
-        }
-      };
-      
-      button.addEventListener('click', clickHandler);
-      this.eventListeners.push({
-        element: button,
-        event: 'click',
-        handler: clickHandler
-      });
+    const navigation = this._node('nav');
+    navigation.setAttribute('aria-label', 'Results pages');
+    const list = this._node('ul', 'swi-pagination-list');
+    const addButton = (page, text, key, disabled = false) => {
+      const li = this._node('li', `swi-pagination-item${disabled ? ' swi-disabled' : ''}${key === String(this.currentPage) ? ' swi-active' : ''}`);
+      const button = this._node('button', 'swi-pagination-btn', text);
+      button.type = 'button';
+      button.dataset.page = String(page);
+      button.dataset.swiFocus = key;
+      button.disabled = disabled;
+      if (key === String(this.currentPage)) button.setAttribute('aria-current', 'page');
+      if (key !== 'previous' && key !== 'next') button.setAttribute('aria-label', `Page ${page}`);
+      li.append(button);
+      list.append(li);
+    };
+    addButton(this.currentPage - 1, 'Previous', 'previous', this.currentPage === 1);
+    const pages = new Set([1, total]);
+    for (let page = Math.max(1, this.currentPage - 2); page <= Math.min(total, this.currentPage + 2); page++) pages.add(page);
+    let previous = 0;
+    [...pages].sort((a, b) => a - b).forEach(page => {
+      if (previous && page - previous > 1) {
+        const ellipsis = this._node('li', 'swi-pagination-ellipsis', '\u2026');
+        ellipsis.setAttribute('aria-hidden', 'true');
+        list.append(ellipsis);
+      }
+      addButton(page, page, String(page));
+      previous = page;
     });
+    addButton(this.currentPage + 1, 'Next', 'next', this.currentPage === total);
+    navigation.append(list);
+    container.replaceChildren(navigation);
+    if (focusKey) {
+      const buttons = [...container.querySelectorAll('button')];
+      const preferred = buttons.find(button => button.dataset.swiFocus === focusKey && !button.disabled);
+      (preferred || buttons.find(button => button.getAttribute('aria-current') === 'page')).focus();
+    }
   }
 
-  /**
-   * Navigate to a specific page
-   */
   goToPage(pageNumber) {
-    const totalPages = Math.ceil(this.filteredData.length / this.paginationConfig.itemsPerPage);
-    
-    if (pageNumber < 1 || pageNumber > totalPages) {
-      return;
-    }
-    
+    if (this._destroyed || this._state === 'loading' || !this.paginationConfig.enabled) return;
+    const total = Math.ceil(this.filteredData.length / this.paginationConfig.itemsPerPage);
+    if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > total) return;
     this.currentPage = pageNumber;
     this.render();
   }
 
-  /**
-   * Create DOM element from HTML string
-   */
-  _createElementFromHTML(htmlString) {
-    const template = document.createElement('template');
-    template.innerHTML = htmlString.trim();
-    return template.content.firstChild;
+  _createElementFromHTML(html) {
+    if (typeof html !== 'string' || !html.trim()) throw new Error('SWI: itemTemplate must return a nonempty HTML string or Element');
+    const template = this._document.createElement('template');
+    template.innerHTML = html.trim();
+    const nodes = [...template.content.childNodes].filter(node => node.nodeType !== 8
+      && !(node.nodeType === 3 && !node.textContent.trim()));
+    if (nodes.length !== 1 || !isElement(nodes[0])) throw new Error('SWI: HTML templates must contain exactly one root element');
+    return nodes[0];
   }
 
-  /**
-   * Destroy the instance and cleanup
-   */
   destroy() {
-    // Remove event listeners
-    this.eventListeners.forEach(({ element, event, handler }) => {
-      element.removeEventListener(event, handler);
-    });
-    
-    // Clear container
-    if (this.container) {
-      this.container.innerHTML = '';
+    if (this._destroyed) return;
+    this._destroyed = true;
+    this._state = 'destroyed';
+    this._operation?.controller.abort();
+    this._clearBindings();
+    this.container.replaceChildren();
+    this._clearPagination();
+    if (this._originalBusy === null) this.container.removeAttribute('aria-busy');
+    else this.container.setAttribute('aria-busy', this._originalBusy);
+    if (this._originalTabIndex === null) this.container.removeAttribute('tabindex');
+    else this.container.setAttribute('tabindex', this._originalTabIndex);
+    if (this._declarative) {
+      const { host, id, template, parent, nextSibling, wrapper } = this._declarative;
+      if (!wrapper) parent.insertBefore(template, nextSibling?.parentNode === parent ? nextSibling : null);
+      else wrapper.remove();
+      if (SWIDeclarativeHandler.instances.get(id) === this) SWIDeclarativeHandler.instances.delete(id);
+      SWIDeclarativeHandler.containers.delete(host);
+      this._declarative = null;
     }
-    
-    // Clear pagination
-    if (this.paginationConfig.containerElement) {
-      this.paginationConfig.containerElement.innerHTML = '';
-    }
-    
-    // Clear references
     this.data = [];
     this.filteredData = [];
-    this.eventListeners = [];
+    this.dataSource = null;
+    this.itemTemplate = null;
+    this.searchConfig.inputElement = null;
+    this.searchConfig.actionElement = null;
+    this.paginationConfig.containerElement = null;
+    this._retryHandler = null;
+    this._operation = null;
   }
 }
 
-/**
- * Declarative Initialization Handler
- * Automatically initializes SWI instances from HTML attributes
- */
 class SWIDeclarativeHandler {
   static instances = new Map();
+  static containers = new WeakMap();
 
-  /**
-   * Initialize all declarative SWI instances in the DOM
-   */
   static init() {
-    const containers = document.querySelectorAll('[data-swi-id]');
-    
-    containers.forEach(container => {
-      try {
-        const instance = SWIDeclarativeHandler.createInstance(container);
-        if (instance) {
-          const id = container.getAttribute('data-swi-id');
-          SWIDeclarativeHandler.instances.set(id, instance);
-        }
-      } catch (error) {
-        console.error('SWI: Failed to initialize declarative instance', error);
-      }
+    document.querySelectorAll('[data-swi-id]').forEach(container => {
+      try { SWIDeclarativeHandler.createInstance(container); }
+      catch (error) { console.error('SWI: Failed to initialize declarative instance', error); }
     });
   }
 
-  /**
-   * Create an SWI instance from a declarative container
-   */
   static createInstance(container) {
+    const existing = this.containers.get(container);
+    if (existing && !existing._destroyed) return existing;
     const id = container.getAttribute('data-swi-id');
     const source = container.getAttribute('data-swi-source');
-    
-    if (!id || !source) {
-      console.warn('SWI: data-swi-id and data-swi-source are required');
-      return null;
+    if (!id?.trim() || !source?.trim()) throw new Error('SWI: data-swi-id and data-swi-source are required');
+    if (this.instances.has(id)) throw new Error(`SWI: duplicate data-swi-id: ${id}`);
+    const attribute = container.getAttribute('data-swi-page-size');
+    const pageSize = attribute === null ? 10 : /^\d+$/.test(attribute.trim())
+      ? validatePageSize(Number(attribute)) : validatePageSize(NaN);
+    const owned = selector => [...container.querySelectorAll(selector)]
+      .find(element => element.closest('[data-swi-id]') === container);
+    const template = owned('[data-swi-template="item"]');
+    if (!template) throw new Error('SWI: data-swi-template="item" element not found');
+    const parent = template.parentElement;
+    const nextSibling = template.nextSibling;
+    const input = owned('[data-swi-search-input]');
+    const action = owned('[data-swi-search-action]');
+    const pagination = owned('[data-swi-pagination]');
+    if (input && !input.matches('input')) throw new Error('SWI: search input must be an input element');
+    if (parent !== container && [input, action, pagination].some(element => element && parent.contains(element))) {
+      throw new Error('SWI: search and pagination controls must be outside the item wrapper');
     }
-
-    // Get configuration from attributes
-    const pageSize = parseInt(container.getAttribute('data-swi-page-size')) || 10;
-    const searchKey = container.getAttribute('data-swi-search-key') || 'name';
-    
-    // Find template element
-    const templateElement = container.querySelector('[data-swi-template="item"]');
-    if (!templateElement) {
-      console.warn('SWI: data-swi-template="item" element not found');
-      return null;
-    }
-    
-    // Find container for rendered items (parent of template or container itself)
-    const itemContainer = templateElement.parentElement;
-    
-    // Find search input and action
-    const searchInput = container.querySelector('[data-swi-search-input]');
-    const searchAction = container.querySelector('[data-swi-search-action]');
-    
-    // Find pagination container
-    const paginationContainer = container.querySelector('[data-swi-pagination]');
-    
-    // Create a wrapper for items if template is direct child
-    let renderContainer = itemContainer;
-    if (itemContainer === container) {
-      const wrapper = document.createElement('div');
+    if (parent !== container && parent.querySelector('[data-swi-id]')) throw new Error('SWI: nested instances must be outside the item wrapper');
+    const wrapper = parent === container ? container.ownerDocument.createElement('div') : null;
+    if (wrapper) {
       wrapper.className = 'swi-item-container';
-      templateElement.parentElement.insertBefore(wrapper, templateElement);
-      renderContainer = wrapper;
+      parent.insertBefore(wrapper, template);
     }
-    
-    // Hide the template
-    templateElement.style.display = 'none';
-    
-    // Create item template function
-    const itemTemplate = SWIDeclarativeHandler.createTemplateFunction(templateElement);
-    
-    // Create instance configuration
-    const config = {
-      container: renderContainer,
-      data: source,
-      itemTemplate: itemTemplate,
-      pagination: {
-        enabled: !!paginationContainer,
-        selector: paginationContainer ? `#${paginationContainer.id || 'swi-pagination-' + id}` : null,
-        itemsPerPage: pageSize
-      },
-      search: {
-        enabled: !!searchInput,
-        selector: searchInput ? null : null,
-        searchKey: searchKey,
-        inputElement: searchInput,
-        actionElement: searchAction
-      }
-    };
-    
-    // Assign ID to pagination container if it doesn't have one
-    if (paginationContainer && !paginationContainer.id) {
-      paginationContainer.id = 'swi-pagination-' + id;
-      config.pagination.selector = '#' + paginationContainer.id;
+    template.style.display = 'none';
+    const itemTemplate = this.createTemplateFunction(template);
+    if (!wrapper) template.remove();
+    let instance;
+    try {
+      instance = new SenangWebsIndex({
+        container: wrapper || parent, data: source, itemTemplate,
+        search: { enabled: !!input, inputElement: input, actionElement: action,
+          searchKey: container.getAttribute('data-swi-search-key') || 'name' },
+        pagination: { enabled: !!pagination, containerElement: pagination, itemsPerPage: pageSize }
+      });
+    } catch (error) {
+      if (wrapper) wrapper.remove();
+      else parent.insertBefore(template, nextSibling?.parentNode === parent ? nextSibling : null);
+      throw error;
     }
-    
-    // Create custom instance with declarative setup
-    return new SWIDeclarativeInstance(config);
+    instance._declarative = { host: container, id, template, parent, nextSibling, wrapper };
+    this.instances.set(id, instance);
+    this.containers.set(container, instance);
+    return instance;
   }
 
-  /**
-   * Create template function from declarative template element
-   */
   static createTemplateFunction(templateElement) {
-    return (item) => {
-      // Clone the template
+    return item => {
       const clone = templateElement.cloneNode(true);
       clone.style.display = '';
       clone.removeAttribute('data-swi-template');
       clone.classList.add('swi-item');
-      
-      // Find all elements with data-swi-value
-      const valueElements = clone.querySelectorAll('[data-swi-value]');
-      
-      valueElements.forEach(element => {
-        const valuePath = element.getAttribute('data-swi-value');
-        // Extract key from path like "item.name" -> "name"
-        const key = valuePath.replace(/^item\./, '');
-        
-        // Set the text content
-        if (item[key] !== undefined && item[key] !== null) {
-          element.textContent = item[key];
-        }
+      const values = [...clone.querySelectorAll('[data-swi-value]')];
+      if (clone.hasAttribute('data-swi-value')) values.unshift(clone);
+      values.forEach(element => {
+        const key = element.getAttribute('data-swi-value').replace(/^item\./, '');
+        element.textContent = item[key] == null ? '' : String(item[key]);
       });
-      
-      return clone.outerHTML;
+      return clone;
     };
   }
 
-  /**
-   * Get instance by ID
-   */
-  static getInstance(id) {
-    return SWIDeclarativeHandler.instances.get(id);
-  }
+  static getInstance(id) { return this.instances.get(id); }
 
-  /**
-   * Destroy all instances
-   */
   static destroyAll() {
-    SWIDeclarativeHandler.instances.forEach(instance => {
-      instance.destroy();
-    });
-    SWIDeclarativeHandler.instances.clear();
+    [...this.instances.values()].forEach(instance => instance.destroy());
+    this.instances.clear();
   }
 }
 
-/**
- * Extended SWI instance for declarative initialization
- */
-class SWIDeclarativeInstance extends SenangWebsIndex {
-  constructor(config) {
-    // Prepare proper options for parent constructor
-    const options = {
-      container: config.container,
-      data: config.data,
-      itemTemplate: config.itemTemplate,
-      search: config.search || { enabled: false },
-      pagination: config.pagination || { enabled: false }
-    };
-    
-    // Call parent constructor properly
-    super(options);
-    
-    // Store declarative-specific elements
-    this.searchConfig.inputElement = config.search?.inputElement || null;
-    this.searchConfig.actionElement = config.search?.actionElement || null;
-  }
-
-  async _init() {
-    try {
-      // Show loading state
-      this.showLoading();
-      
-      // Load data
-      await this._loadData();
-      
-      // Hide loading state
-      this.hideLoading();
-      
-      // Setup declarative search
-      if (this.searchConfig.enabled && this.searchConfig.inputElement) {
-        this._setupDeclarativeSearch();
-      }
-      
-      // Setup pagination
-      if (this.paginationConfig.enabled && this.paginationConfig.selector) {
-        this.paginationConfig.containerElement = document.querySelector(this.paginationConfig.selector);
-      }
-      
-      // Initial render
-      this.render();
-    } catch (error) {
-      console.error('SWI: Initialization failed', error);
-      this.showError('Failed to load data', error.message);
-      throw error;
-    }
-  }
-
-  _setupDeclarativeSearch() {
-    const inputElement = this.searchConfig.inputElement;
-    const actionElement = this.searchConfig.actionElement;
-    
-    if (inputElement) {
-      // Use debounced search handler
-      const searchHandler = this._debounce((e) => {
-        this.search(e.target.value);
-      }, 300);
-      
-      inputElement.addEventListener('input', searchHandler);
-      this.eventListeners.push({
-        element: inputElement,
-        event: 'input',
-        handler: searchHandler
-      });
-      
-      // If action element exists, trigger immediate search on click
-      if (actionElement) {
-        const clickHandler = (e) => {
-          e.preventDefault();
-          this.search(inputElement.value);
-        };
-        
-        actionElement.addEventListener('click', clickHandler);
-        this.eventListeners.push({
-          element: actionElement,
-          event: 'click',
-          handler: clickHandler
-        });
-      }
-    }
-  }
-}
-
-// Auto-initialize on DOM ready
-if (typeof window !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      SWIDeclarativeHandler.init();
-    });
-  } else {
-    // DOM is already ready
-    SWIDeclarativeHandler.init();
-  }
-}
-
-// Export for module systems
-export default SenangWebsIndex;
-export { SenangWebsIndex, SWIDeclarativeHandler };
-
-// Global exposure for UMD
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   window.SenangWebsIndex = SenangWebsIndex;
   window.SWI = SenangWebsIndex;
   window.SWIDeclarativeHandler = SWIDeclarativeHandler;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => SWIDeclarativeHandler.init(), { once: true });
+  } else SWIDeclarativeHandler.init();
 }
+
+export default SenangWebsIndex;
+export { SenangWebsIndex, SenangWebsIndex as SWI, SWIDeclarativeHandler };

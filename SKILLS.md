@@ -1,7 +1,7 @@
 ---
 name: senangwebs-index
 description: Searchable and paginated HTML views from JSON data with multi-field search, templating, and state handling.
-version: 1.0.2
+version: 1.1.0
 package: senangwebs-index
 ---
 
@@ -12,7 +12,7 @@ package: senangwebs-index
 - **Purpose**: Transform JSON into searchable, paginated HTML views
 - **Entry**: `dist/swi.js`
 - **Dependencies**: none
-- **Scripts**: `npm run build`, `npm run dev`, `npm run test`
+- **Scripts**: `npm run build`, `npm run dev`, `npm test`, `npm run verify:package`
 
 ## Workflow
 
@@ -31,8 +31,10 @@ Start in `C:\wamp64\www\sw-libraries\senangwebs-index`. Read `README.md`, `packa
 
 ## JavaScript API
 
+`SWI` and `SenangWebsIndex` refer to the same browser constructor; either supports `new` with the same options.
+
 ```js
-const index = new SenangWebsIndex({
+const index = new SWI({
   container: '#items',
   data,
   itemTemplate
@@ -49,7 +51,7 @@ index.showError(message)   // show error state
 
 ## Focus Areas
 
-- JSON data fetching and caching
+- Abortable JSON data fetching and observed initialization readiness (`index.ready`)
 - Multi-field search with 300ms debounce
 - Smart pagination with page controls
 - Loading/empty/error state toggles
@@ -63,10 +65,15 @@ index.showError(message)   // show error state
 - Debounce must not delay initial render
 - Normalize search keys through `_normalizeSearchKeys()` so declarative and programmatic APIs stay consistent
 - Test with large datasets for pagination performance
+- Ask before running unit tests unless this session already authorizes them
+- Prefer `Element` templates with `textContent` for untrusted data; HTML strings are trusted markup
+- Preserve `prepack` and committed lockfile/distribution consistency
 
 ## Validation
 
 ```bash
 npm run build
+# Requires explicit unit-test authorization
 npm test
+npm run verify:package
 ```

@@ -87,7 +87,10 @@
   <h1>⚡ SenangWebs Index - Programmatic Example</h1>
   
   <div class="demo-container">
-    <div id="search-container"></div>
+    <div id="search-container" class="swi-search-container">
+      <label for="product-search">Search products</label>
+      <input id="product-search" type="search" class="swi-search-input" placeholder="Search products by name..." />
+    </div>
     <div id="data-container"></div>
     <div id="pagination-container"></div>
   </div>
@@ -200,21 +203,28 @@
     ];
 
     // Initialize SWI with JavaScript
-    const swi = new SenangWebsIndex({
+    const swi = new SWI({
       container: '#data-container',
       data: products,
       itemTemplate: (item) => {
-        return `
-          <div class="swi-item">
-            <div class="swi-item-content">
-              <h3>${item.name}</h3>
-              <p>${item.description}</p>
-              <span class="category-badge">${item.category}</span>
-              <p class="stock-info">📦 ${item.stock} units in stock</p>
-            </div>
-            <div class="price-tag">$${item.price.toFixed(2)}</div>
-          </div>
-        `;
+        const card = document.createElement('div');
+        card.className = 'swi-item';
+        const content = document.createElement('div');
+        content.className = 'swi-item-content';
+        const field = (tag, className, value) => {
+          const element = document.createElement(tag);
+          element.className = className;
+          element.textContent = value;
+          return element;
+        };
+        content.append(
+          field('h3', '', item.name),
+          field('p', '', item.description),
+          field('span', 'category-badge', item.category),
+          field('p', 'stock-info', `${item.stock} units in stock`)
+        );
+        card.append(content, field('div', 'price-tag', `$${Number(item.price).toFixed(2)}`));
+        return card;
       },
       search: {
         enabled: true,
@@ -226,22 +236,6 @@
         selector: '#pagination-container',
         itemsPerPage: 5
       }
-    });
-
-    // Add custom search input to the search container
-    const searchContainer = document.getElementById('search-container');
-    searchContainer.innerHTML = `
-      <div class="swi-search-container">
-        <input type="text" 
-               class="swi-search-input" 
-               placeholder="Search products by name..." />
-      </div>
-    `;
-
-    // Setup search functionality
-    const searchInput = searchContainer.querySelector('input');
-    searchInput.addEventListener('input', (e) => {
-      swi.search(e.target.value);
     });
 
     console.log('SWI Instance:', swi);

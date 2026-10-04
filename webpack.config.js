@@ -3,10 +3,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
-  entry: {
-    swi: './src/js/swi.js',
-    styles: './src/css/swi.css'
-  },
+  entry: { swi: ['./src/css/swi.css', './src/js/swi.js'] },
   output: {
     filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
@@ -16,6 +13,7 @@ module.exports = {
       export: 'default'
     },
     globalObject: 'this',
+    clean: true,
   },
   optimization: {
     minimize: true,

@@ -225,11 +225,12 @@
              data-swi-search-key="name">
           
           <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-            <input type="text" 
+            <label for="declarative-demo-search">Search products</label>
+            <input id="declarative-demo-search" type="search"
                    data-swi-search-input 
                    placeholder="Search products..." 
                    style="width: calc(100% - 100px);" />
-            <button data-swi-search-action>Search</button>
+            <button type="button" data-swi-search-action>Search</button>
           </div>
           
           <div class="swi-item-container">
@@ -291,25 +292,34 @@
     let programmaticInstance;
     
     function initProgrammatic() {
+      programmaticInstance?.destroy();
+      const searchContainer = document.getElementById('prog-search');
+      const label = document.createElement('label');
+      label.htmlFor = 'prog-search-input';
+      label.textContent = 'Search products';
+      const input = document.createElement('input');
+      input.id = 'prog-search-input';
+      input.type = 'search';
+      input.className = 'swi-search-input';
+      input.placeholder = 'Search products...';
+      searchContainer.replaceChildren(label, input);
       programmaticInstance = new SenangWebsIndex({
         container: '#prog-data',
         data: './data.json',
         itemTemplate: (item) => {
-          return `
-            <div class="product-card">
-              <div class="product-content">
-                <h3 class="product-title">${item.name}</h3>
-                <p class="product-desc">${item.description}</p>
-                <div class="product-meta">
-                  <span>📦 Category: ${item.category}</span>
-                  <span>🆔 ID: ${item.id}</span>
-                </div>
-              </div>
-              <div class="product-price-tag">
-                $${item.price}
-              </div>
-            </div>
-          `;
+          const field = (tag, className, value) => {
+            const element = document.createElement(tag);
+            element.className = className;
+            element.textContent = value;
+            return element;
+          };
+          const card = field('div', 'product-card', '');
+          const content = field('div', 'product-content', '');
+          const meta = field('div', 'product-meta', '');
+          meta.append(field('span', '', `Category: ${item.category}`), field('span', '', `ID: ${item.id}`));
+          content.append(field('h3', 'product-title', item.name), field('p', 'product-desc', item.description), meta);
+          card.append(content, field('div', 'product-price-tag', `$${item.price}`));
+          return card;
         },
         search: {
           enabled: true,
@@ -323,20 +333,6 @@
         }
       });
       
-      // Add search input
-      document.getElementById('prog-search').innerHTML = `
-        <div style="margin-bottom: 20px;">
-          <input type="text" 
-                 class="swi-search-input" 
-                 placeholder="Search products..." 
-                 style="width: calc(100% - 100px);" />
-        </div>
-      `;
-      
-      const searchInput = document.querySelector('#prog-search input');
-      searchInput.addEventListener('input', (e) => {
-        programmaticInstance.search(e.target.value);
-      });
     }
     
     // Initialize on load
